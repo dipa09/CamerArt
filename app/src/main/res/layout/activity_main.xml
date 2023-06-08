@@ -55,6 +55,26 @@
         app:layout_constraintStart_toStartOf="parent"
         />
 
+    <Button
+        android:id="@+id/capture_mode_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:elevation="2dp"
+        android:text="Quality"
+        android:layout_marginTop="100dp"
+        app:layout_constraintBottom_toBottomOf="@id/camera_button"
+        app:layout_constraintStart_toStartOf="@id/camera_button"
+        />
+
+    <Button
+        android:id="@+id/flash_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="ON"
+        app:layout_constraintBottom_toBottomOf="@id/mute_button"
+        app:layout_constraintStart_toEndOf="@id/mute_button"
+        />
+
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/vertical_centerline"
         android:layout_width="wrap_content"

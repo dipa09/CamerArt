@@ -27,15 +27,21 @@ import java.util.concurrent.Executors
 typealias LumaListener = (luma: Double) -> Unit
 
 /* TODO(davide):
-   - Detect devices capable of Preview + Vide + Photo use case
-   - Button between Preview + Video and Preview + Photo
-   - Stop/Resume video recording
+   - Camera Configuration
+     - Detect devices capable of Preview + Vide + Photo use case
+     - Button between Preview + Video and Preview + Photo
+     - Ensure that front and back cameras are available
+   - Image Capture
+     - Zero lag mode for devices that support it
+     - Forcing a rotation
+     - Setting JPEG quality
+     - Save photos in other formats?
+   - Video Capture
+     - Stop/Resume
+
    - Set output folder for saving photos and videos?
-   - Save photos in png?
    - Use user locale for file names
    - Make the mute/unmute button invisible during video recording
-   - Option to set image resolution
-   - Ensure that front and back cameras are available
    - Camera UI
    - Gallery Activity
    - Settings Activity
@@ -50,8 +56,14 @@ class MainActivity : AppCompatActivity() {
     private var imageCapture: ImageCapture? = null
     private var videoCapture: VideoCapture<Recorder>? = null
     private var recording: Recording? = null
+
+    //
+    // Settings
+    //
     private var audioEnabled: Boolean = true
     private var lensFacing: Int = CameraSelector.LENS_FACING_BACK
+    private var captureMode: Int = ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
+    private var flashMode: Int = ImageCapture.FLASH_MODE_AUTO
 
     private val activityResultLauncher =
         registerForActivityResult(
@@ -94,6 +106,8 @@ class MainActivity : AppCompatActivity() {
         viewBinding.videoCaptureButton.setOnClickListener { captureVideo() }
         viewBinding.muteButton.setOnClickListener { toggleAudio() }
         viewBinding.cameraButton.setOnClickListener { toggleCamera() }
+        viewBinding.captureModeButton.setOnClickListener { toggleCaptureMode() }
+        viewBinding.flashButton.setOnClickListener { toggleFlashMode() }
 
         cameraExecutor = Executors.newSingleThreadExecutor()
     }
@@ -111,6 +125,28 @@ class MainActivity : AppCompatActivity() {
             CameraSelector.LENS_FACING_FRONT
         else
             CameraSelector.LENS_FACING_BACK
+        startCamera()
+    }
+
+    private fun toggleCaptureMode() {
+        captureMode = if (captureMode == ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY) {
+            viewBinding.captureModeButton.text = "Latency"
+            ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY
+        } else {
+            viewBinding.captureModeButton.text = "Quality"
+            ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
+        }
+        startCamera()
+    }
+
+    private fun toggleFlashMode() {
+        flashMode = if (flashMode == ImageCapture.FLASH_MODE_AUTO) {
+            viewBinding.flashButton.text = "AUTO"
+            ImageCapture.FLASH_MODE_ON
+        } else {
+            viewBinding.flashButton.text = "ON"
+            ImageCapture.FLASH_MODE_ON
+        }
         startCamera()
     }
 
@@ -236,7 +272,12 @@ class MainActivity : AppCompatActivity() {
                     it.setSurfaceProvider(viewBinding.viewFinder.surfaceProvider)
                 }
 
-            imageCapture = ImageCapture.Builder().build()
+            imageCapture = ImageCapture.Builder()
+                .setCaptureMode(captureMode)
+                .setFlashMode(flashMode)
+                //.setJpegQuality()
+                //.setTargetRotation()
+                .build()
 
             val recorder = Recorder.Builder()
                 .setQualitySelector(QualitySelector.from(Quality.HIGHEST))
