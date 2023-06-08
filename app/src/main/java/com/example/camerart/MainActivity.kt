@@ -1,15 +1,17 @@
 package com.example.camerart
 
-import androidx.appcompat.app.AppCompatActivity
-import android.os.Bundle
 import android.Manifest
+import android.app.ActivityOptions
 import android.content.ContentValues
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
@@ -25,29 +27,6 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 typealias LumaListener = (luma: Double) -> Unit
-
-/* TODO(davide):
-   - Camera Configuration
-     - Detect devices capable of Preview + Vide + Photo use case
-     - Button between Preview + Video and Preview + Photo
-     - Ensure that front and back cameras are available
-   - Image Capture
-     - Zero lag mode for devices that support it
-     - Forcing a rotation
-     - Setting JPEG quality
-     - Save photos in other formats?
-   - Video Capture
-     - Stop/Resume
-
-   - Set output folder for saving photos and videos?
-   - Use user locale for file names
-   - Make the mute/unmute button invisible during video recording
-   - Camera UI
-   - Gallery Activity
-   - Settings Activity
-   - Something that uses ImageAnalysis
-   - Something that uses the Advance API
-*/
 
 class MainActivity : AppCompatActivity() {
     private lateinit var viewBinding: ActivityMainBinding
@@ -91,23 +70,38 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        /*
+        // NOTE(davide): This must come before setContentView
+        with(window) {
+            requestFeature(Window.FEATURE_ACTIVITY_TRANSITIONS)
+            enterTransition = Slide()
+            exitTransition = Explode()
+        }
+         */
+
         viewBinding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(viewBinding.root)
 
-        // Request camera permissions
         if (allPermissionsGranted()) {
             startCamera()
         } else {
             requestPermissions()
         }
 
-        // Set up the listeners for take photo and video capture buttons
         viewBinding.imageCaptureButton.setOnClickListener { takePhoto() }
         viewBinding.videoCaptureButton.setOnClickListener { captureVideo() }
         viewBinding.muteButton.setOnClickListener { toggleAudio() }
         viewBinding.cameraButton.setOnClickListener { toggleCamera() }
         viewBinding.captureModeButton.setOnClickListener { toggleCaptureMode() }
         viewBinding.flashButton.setOnClickListener { toggleFlashMode() }
+
+        viewBinding.settingsButton.setOnClickListener {
+            val intent = Intent(this, SettingActivity::class.java)
+
+            this.startActivity(intent,
+                ActivityOptions.makeSceneTransitionAnimation(this).toBundle())
+        }
 
         cameraExecutor = Executors.newSingleThreadExecutor()
     }

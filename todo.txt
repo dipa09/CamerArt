@@ -1,0 +1,22 @@
+- Camera Configuration
+  - Detect devices capable of Preview + Vide + Photo use case
+  - Button between Preview + Video and Preview + Photo
+  - Ensure that front and back cameras are available
+
+- Image Capture
+  - Zero lag mode for devices that support it
+  - Forcing a rotation
+  - Setting JPEG quality
+  - Save photos in other formats?
+
+- Video Capture
+  - Stop/Resume
+
+- Setting Fragment
+  - Set output folder for saving photos and videos?
+  - Use user locale for file names
+
+- Make the mute/unmute button invisible during video recording
+- Camera UI
+- Something that uses ImageAnalysis
+- Something that uses the Advance API

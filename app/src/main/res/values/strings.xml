@@ -6,4 +6,8 @@
     <string name="mute">Mute</string>
     <string name="unmute">Unmute</string>
     <string name="toggle_camera">Switch Camera</string>
+
+    <string name="setting_lens_direction">Lens Direction</string>
+    <string name="setting_capture_mode">Capture Mode</string>
+    <string name="setting_flash_mode">Flash</string>
 </resources>

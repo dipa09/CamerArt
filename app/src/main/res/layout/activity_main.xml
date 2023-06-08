@@ -75,6 +75,15 @@
         app:layout_constraintStart_toEndOf="@id/mute_button"
         />
 
+    <Button
+        android:id="@+id/settings_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Settings"
+        app:layout_constraintBottom_toTopOf="@id/image_capture_button"
+        app:layout_constraintStart_toStartOf="@id/image_capture_button"
+        />
+
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/vertical_centerline"
         android:layout_width="wrap_content"
