@@ -4,9 +4,8 @@
   - Ensure that front and back cameras are available
 
 - Image Capture
+  - setResolutionSelector
   - Zero lag mode for devices that support it
-  - Forcing a rotation
-  - Setting JPEG quality
   - Save photos in other formats?
 
 - Video Capture

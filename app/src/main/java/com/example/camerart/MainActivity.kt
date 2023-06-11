@@ -1,25 +1,27 @@
 package com.example.camerart
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.ActivityOptions
 import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.Image
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
+import android.view.Surface
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageCaptureException
-import androidx.camera.core.Preview
+import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.video.*
+import androidx.camera.video.VideoCapture
 import androidx.core.content.ContextCompat
 import androidx.core.content.PermissionChecker
+import androidx.preference.PreferenceManager
 import com.example.camerart.databinding.ActivityMainBinding
 import java.text.SimpleDateFormat
 import java.util.*
@@ -29,20 +31,41 @@ import java.util.concurrent.Executors
 typealias LumaListener = (luma: Double) -> Unit
 
 class MainActivity : AppCompatActivity() {
+    companion object {
+        private const val TAG = "CamerArt"
+        private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
+        private val REQUIRED_PERMISSIONS =
+            mutableListOf (
+                Manifest.permission.CAMERA,
+                Manifest.permission.RECORD_AUDIO
+            ).apply {
+                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+                    add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                }
+            }.toTypedArray()
+
+        const val JPEG_QUALITY_UNINITIALIZED: Int = 0
+        const val JPEG_QUALITY_LATENCY: Int = 95
+        const val JPEG_QUALITY_MAX: Int = 100
+        const val TARGET_ROTATION_UNINITIALIZED = -1
+    }
+
     private lateinit var viewBinding: ActivityMainBinding
     private lateinit var cameraExecutor: ExecutorService
 
     private var imageCapture: ImageCapture? = null
     private var videoCapture: VideoCapture<Recorder>? = null
     private var recording: Recording? = null
+    private var currCameraInfo: CameraInfo? = null
 
-    //
     // Settings
-    //
     private var audioEnabled: Boolean = true
     private var lensFacing: Int = CameraSelector.LENS_FACING_BACK
     private var captureMode: Int = ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
     private var flashMode: Int = ImageCapture.FLASH_MODE_AUTO
+    private var jpegQuality: Int = JPEG_QUALITY_UNINITIALIZED
+    private var targetRotation: Int = TARGET_ROTATION_UNINITIALIZED
+    //
 
     private val activityResultLauncher =
         registerForActivityResult(
@@ -55,9 +78,7 @@ class MainActivity : AppCompatActivity() {
                     permissionGranted = false
             }
             if (!permissionGranted) {
-                Toast.makeText(baseContext,
-                    "Permission request denied",
-                    Toast.LENGTH_SHORT).show()
+                Toast.makeText(baseContext, "Permission request denied", Toast.LENGTH_SHORT).show()
             } else {
                 startCamera()
             }
@@ -93,14 +114,10 @@ class MainActivity : AppCompatActivity() {
         viewBinding.videoCaptureButton.setOnClickListener { captureVideo() }
         viewBinding.muteButton.setOnClickListener { toggleAudio() }
         viewBinding.cameraButton.setOnClickListener { toggleCamera() }
-        viewBinding.captureModeButton.setOnClickListener { toggleCaptureMode() }
-        viewBinding.flashButton.setOnClickListener { toggleFlashMode() }
 
         viewBinding.settingsButton.setOnClickListener {
             val intent = Intent(this, SettingActivity::class.java)
-
-            this.startActivity(intent,
-                ActivityOptions.makeSceneTransitionAnimation(this).toBundle())
+            this.startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this).toBundle())
         }
 
         cameraExecutor = Executors.newSingleThreadExecutor()
@@ -109,39 +126,80 @@ class MainActivity : AppCompatActivity() {
     private fun toggleAudio() {
         audioEnabled = !audioEnabled
         if (audioEnabled)
-            viewBinding.muteButton.text = getString(R.string.mute)
+            viewBinding.muteButton.background.alpha = 0xff/2
         else
-            viewBinding.muteButton.text = getString(R.string.unmute)
+            viewBinding.muteButton.background.alpha = 0xff
     }
 
     private fun toggleCamera() {
-        lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK)
+        lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK) {
+            viewBinding.cameraButton.background.alpha = 0xff/2
             CameraSelector.LENS_FACING_FRONT
-        else
+        } else {
+            viewBinding.cameraButton.background.alpha = 0xff
             CameraSelector.LENS_FACING_BACK
-        startCamera()
-    }
-
-    private fun toggleCaptureMode() {
-        captureMode = if (captureMode == ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY) {
-            viewBinding.captureModeButton.text = "Latency"
-            ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY
-        } else {
-            viewBinding.captureModeButton.text = "Quality"
-            ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
         }
         startCamera()
     }
 
-    private fun toggleFlashMode() {
-        flashMode = if (flashMode == ImageCapture.FLASH_MODE_AUTO) {
-            viewBinding.flashButton.text = "AUTO"
-            ImageCapture.FLASH_MODE_ON
-        } else {
-            viewBinding.flashButton.text = "ON"
-            ImageCapture.FLASH_MODE_ON
+    // NOTE(davide): For some reason, sometimes you need to delete app's data if you edit
+    // a previous preference from root_preferences.xml or arrays.xml, otherwise you get
+    // a boolean to string exception.
+    private fun loadPreferences() {
+        val sharedPreference = PreferenceManager.getDefaultSharedPreferences(this)
+
+        var newCaptureMode: Int = captureMode
+
+        val prefs = sharedPreference.all
+        for (pref in prefs.iterator()) {
+            //Log.i(TAG, "preference ${pref.key}, ${pref.value}")
+            when (pref.key) {
+                "pref_flash" -> {
+                    flashMode = when(pref.value) {
+                        "on" -> ImageCapture.FLASH_MODE_ON
+                        "off" -> ImageCapture.FLASH_MODE_OFF
+                        else -> ImageCapture.FLASH_MODE_AUTO
+                    }
+                }
+
+                "pref_capture" -> {
+                    /*
+                    if (currCameraInfo != null && currCameraInfo.isZslSupported) {
+
+                    }*/
+                    newCaptureMode = when(pref.value) {
+                        "quality" -> ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY
+                        //"zero" -> ImageCapture.CAPTURE_MODE_ZERO_SHUTTER_LAG
+                        else -> ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
+                    }
+                }
+
+                "pref_jpeg_quality" -> {
+                    jpegQuality = pref.value as Int
+                }
+
+                "pref_rotation" -> {
+                    when(pref.value) {
+                        "0" -> targetRotation = Surface.ROTATION_0
+                        "90" -> targetRotation = Surface.ROTATION_90
+                        "180" -> targetRotation = Surface.ROTATION_180
+                        "270" -> targetRotation = Surface.ROTATION_270
+                    }
+                }
+
+            }
         }
+
+        // NOTE(davide): Change JPEG quality unless the user changed the capture mode
+        if (newCaptureMode != captureMode) {
+            jpegQuality = JPEG_QUALITY_UNINITIALIZED
+        }
+    }
+
+    override fun onResume() {
         startCamera()
+        Log.i(TAG, "ON RESUME ENDED")
+        super.onResume()
     }
 
     private fun takePhoto() {
@@ -252,7 +310,11 @@ class MainActivity : AppCompatActivity() {
             }
     }
 
+    @SuppressLint("WrongConstant")
     private fun startCamera() {
+        Log.i(TAG, "START CAMERA")
+        loadPreferences()
+
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
 
         cameraProviderFuture.addListener({
@@ -261,16 +323,26 @@ class MainActivity : AppCompatActivity() {
 
             // Preview
             val preview = Preview.Builder()
+                .apply {
+                    if (targetRotation != TARGET_ROTATION_UNINITIALIZED)
+                        setTargetRotation(targetRotation)
+                }
                 .build()
                 .also {
                     it.setSurfaceProvider(viewBinding.viewFinder.surfaceProvider)
                 }
 
+            val cameraSelector = CameraSelector.Builder().requireLensFacing(lensFacing).build()
+
             imageCapture = ImageCapture.Builder()
                 .setCaptureMode(captureMode)
                 .setFlashMode(flashMode)
-                //.setJpegQuality()
-                //.setTargetRotation()
+                .apply {
+                    if (jpegQuality != JPEG_QUALITY_UNINITIALIZED)
+                        setJpegQuality(jpegQuality)
+                    if (targetRotation != TARGET_ROTATION_UNINITIALIZED)
+                        setTargetRotation(targetRotation)
+                }
                 .build()
 
             val recorder = Recorder.Builder()
@@ -288,12 +360,10 @@ class MainActivity : AppCompatActivity() {
                 }
              */
 
-            // Select the default camera
-            val cameraSelector = CameraSelector.Builder().requireLensFacing(lensFacing).build()
-
             try {
                 cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture/*, videoCapture*/)
+                val camera = cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture/*, videoCapture*/)
+                currCameraInfo = camera.cameraInfo
             } catch(exc: Exception) {
                 Log.e(TAG, "Use case binding failed", exc)
             }
@@ -332,18 +402,4 @@ class MainActivity : AppCompatActivity() {
         }
     }
     */
-
-    companion object {
-        private const val TAG = "CameraXApp"
-        private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
-        private val REQUIRED_PERMISSIONS =
-            mutableListOf (
-                Manifest.permission.CAMERA,
-                Manifest.permission.RECORD_AUDIO
-            ).apply {
-                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
-                    add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                }
-            }.toTypedArray()
-    }
 }

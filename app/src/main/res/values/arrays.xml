@@ -1,0 +1,37 @@
+<resources>
+    <string-array name="flash_names">
+        <item>Always Off</item>
+        <item>Always On</item>
+        <item>On dark environments</item>
+    </string-array>
+    <string-array name="flash_values">
+        <item>off</item>
+        <item>on</item>
+        <item>auto</item>
+    </string-array>
+
+    <string-array name="capture_names">
+        <item>Minimize latency</item>
+        <item>Maximize quality</item>
+        <item>Zero short lag</item>
+    </string-array>
+    <string-array name="capture_values">
+        <item>@string/capture_value_latency</item>
+        <item>@string/capture_value_quality</item>
+        <item>zero</item>
+    </string-array>
+
+    <string-array name="rotation_names">
+        <item>0°</item>
+        <item>90°</item>
+        <item>180°</item>
+        <item>270°</item>
+    </string-array>
+    <string-array name="rotation_values">
+        <item>0</item>
+        <item>90</item>
+        <item>180</item>
+        <item>270</item>
+    </string-array>
+
+</resources>
