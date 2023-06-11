@@ -15,6 +15,7 @@ class SettingActivity : AppCompatActivity() {
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             setPreferencesFromResource(R.xml.root_preferences, rootKey)
 
+            // NOTE(davide): Keep the UI consistent since these two are correlated
             val prefCapture: ListPreference? = findPreference("pref_capture")
             val prefJpegQuality: SeekBarPreference? = findPreference("pref_jpeg_quality")
             if (prefCapture != null && prefJpegQuality != null) {

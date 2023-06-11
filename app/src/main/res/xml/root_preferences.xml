@@ -16,17 +16,14 @@
             app:entries="@array/capture_names"
             app:entryValues="@array/capture_values"
             app:useSimpleSummaryProvider="true"
-            app:defaultValue="latency"
-
-            />
+            app:defaultValue="latency" />
 
         <SeekBarPreference
             app:key="pref_jpeg_quality"
             app:title="JPEG Compression Quality"
             app:min="1"
             app:showSeekBarValue="true"
-            android:max="100"
-            />
+            android:max="100" />
 
         <ListPreference
             app:key="pref_rotation"
@@ -34,8 +31,32 @@
             app:entries="@array/rotation_names"
             app:entryValues="@array/rotation_values"
             app:useSimpleSummaryProvider="true"
-            app:defaultValue="0"
-            />
+            app:defaultValue="0" />
+
+        <SwitchPreferenceCompat
+            app:key="pref_photo_on_click"
+            app:title="Photo on Click"
+            app:summary="Take a photo by tapping anywhere on the screen"
+            app:defaultValue="false" />
 
     </PreferenceCategory>
+
+    <PreferenceCategory app:title="Video">
+        <SwitchPreferenceCompat
+            app:key="pref_use_video_temp"
+            app:title="Do a video"
+            app:defaultValue="false" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="Preview">
+        <ListPreference
+            app:key="pref_scale"
+            app:title="Scaling"
+            app:entries="@array/scale_names"
+            app:entryValues="@array/scale_values"
+            app:useSimpleSummaryProvider="true"
+            app:defaultValue="center" />
+
+    </PreferenceCategory>
+
 </PreferenceScreen>

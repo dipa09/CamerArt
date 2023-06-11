@@ -6,7 +6,6 @@ import android.app.ActivityOptions
 import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.media.Image
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
@@ -19,6 +18,7 @@ import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.video.*
 import androidx.camera.video.VideoCapture
+import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.core.content.PermissionChecker
 import androidx.preference.PreferenceManager
@@ -50,6 +50,17 @@ class MainActivity : AppCompatActivity() {
         const val TARGET_ROTATION_UNINITIALIZED = -1
     }
 
+    enum class CameraUseCase(val value: Int) {
+        NONE(0),
+        PREVIEW(1 shl 0),
+        CAPTURE(1 shl 1),
+        VIDEO(1 shl 2),
+
+        PREVIEW_CAPTURE(PREVIEW.value or CAPTURE.value),
+        PREVIEW_VIDEO(PREVIEW.value or VIDEO.value),
+        PREVIEW_CAPTURE_VIDEO(PREVIEW.value or CAPTURE.value or VIDEO.value)
+    }
+
     private lateinit var viewBinding: ActivityMainBinding
     private lateinit var cameraExecutor: ExecutorService
 
@@ -59,12 +70,22 @@ class MainActivity : AppCompatActivity() {
     private var currCameraInfo: CameraInfo? = null
 
     // Settings
-    private var audioEnabled: Boolean = true
+    private var currUseCase: CameraUseCase = CameraUseCase.PREVIEW_CAPTURE
+    // Capture
     private var lensFacing: Int = CameraSelector.LENS_FACING_BACK
     private var captureMode: Int = ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
     private var flashMode: Int = ImageCapture.FLASH_MODE_AUTO
     private var jpegQuality: Int = JPEG_QUALITY_UNINITIALIZED
     private var targetRotation: Int = TARGET_ROTATION_UNINITIALIZED
+
+    // Video
+    private var audioEnabled: Boolean = true
+
+    // Preview
+    private var scaleType: PreviewView.ScaleType = PreviewView.ScaleType.FIT_CENTER
+
+    // Behavioral
+    private var photoOnClickEnabled: Boolean = false
     //
 
     private val activityResultLauncher =
@@ -74,7 +95,7 @@ class MainActivity : AppCompatActivity() {
             // Handle Permission granted/rejected
             var permissionGranted = true
             permissions.entries.forEach {
-                if (it.key in REQUIRED_PERMISSIONS && it.value == false)
+                if (it.key in REQUIRED_PERMISSIONS && !it.value)
                     permissionGranted = false
             }
             if (!permissionGranted) {
@@ -105,6 +126,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(viewBinding.root)
 
         if (allPermissionsGranted()) {
+            loadPreferences()
             startCamera()
         } else {
             requestPermissions()
@@ -118,6 +140,11 @@ class MainActivity : AppCompatActivity() {
         viewBinding.settingsButton.setOnClickListener {
             val intent = Intent(this, SettingActivity::class.java)
             this.startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this).toBundle())
+        }
+
+        viewBinding.viewFinder.setOnClickListener {
+            if (photoOnClickEnabled)
+                takePhoto()
         }
 
         cameraExecutor = Executors.newSingleThreadExecutor()
@@ -144,8 +171,11 @@ class MainActivity : AppCompatActivity() {
 
     // NOTE(davide): For some reason, sometimes you need to delete app's data if you edit
     // a previous preference from root_preferences.xml or arrays.xml, otherwise you get
-    // a boolean to string exception.
-    private fun loadPreferences() {
+    // a random exception.
+    private fun loadPreferences(): Boolean {
+        // TODO(davide): Set this
+        var restartCamera = true
+
         val sharedPreference = PreferenceManager.getDefaultSharedPreferences(this)
 
         var newCaptureMode: Int = captureMode
@@ -153,6 +183,7 @@ class MainActivity : AppCompatActivity() {
         val prefs = sharedPreference.all
         for (pref in prefs.iterator()) {
             //Log.i(TAG, "preference ${pref.key}, ${pref.value}")
+
             when (pref.key) {
                 "pref_flash" -> {
                     flashMode = when(pref.value) {
@@ -165,7 +196,6 @@ class MainActivity : AppCompatActivity() {
                 "pref_capture" -> {
                     /*
                     if (currCameraInfo != null && currCameraInfo.isZslSupported) {
-
                     }*/
                     newCaptureMode = when(pref.value) {
                         "quality" -> ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY
@@ -179,12 +209,32 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 "pref_rotation" -> {
-                    when(pref.value) {
+                    when (pref.value) {
                         "0" -> targetRotation = Surface.ROTATION_0
                         "90" -> targetRotation = Surface.ROTATION_90
                         "180" -> targetRotation = Surface.ROTATION_180
                         "270" -> targetRotation = Surface.ROTATION_270
                     }
+                }
+
+                "pref_photo_on_click" -> {
+                    photoOnClickEnabled = pref.value as Boolean
+                }
+
+                "pref_scale" -> {
+                    when (pref.value) {
+                        "center" -> scaleType = PreviewView.ScaleType.FIT_CENTER
+                        "start" -> scaleType = PreviewView.ScaleType.FIT_START
+                        "end" -> scaleType = PreviewView.ScaleType.FIT_END
+                    }
+                }
+
+                // TODO(davide): Temporary. The user shouldn't be aware of this
+                "pref_use_video_temp" -> {
+                    currUseCase = if (pref.value as Boolean)
+                        CameraUseCase.PREVIEW_VIDEO
+                    else
+                        CameraUseCase.PREVIEW_CAPTURE
                 }
 
             }
@@ -194,12 +244,16 @@ class MainActivity : AppCompatActivity() {
         if (newCaptureMode != captureMode) {
             jpegQuality = JPEG_QUALITY_UNINITIALIZED
         }
+
+        return restartCamera
     }
 
     override fun onResume() {
-        startCamera()
-        Log.i(TAG, "ON RESUME ENDED")
         super.onResume()
+
+        if (loadPreferences())
+            startCamera()
+        Log.i(TAG, "ON RESUME ENDED")
     }
 
     private fun takePhoto() {
@@ -313,15 +367,21 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("WrongConstant")
     private fun startCamera() {
         Log.i(TAG, "START CAMERA")
-        loadPreferences()
 
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
-
         cameraProviderFuture.addListener({
-            // Used to bind the lifecycle of cameras to the lifecycle owner
             val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
 
-            // Preview
+            // TODO(davide): List cameras info
+            /*
+            var camIdx: Int = 0
+            for (camInfo in cameraProvider.availableCameraInfos.iterator()) {
+                //camInfo.getLensFacing()
+                Log.i(TAG, "[$camIdx] lens")
+                ++camIdx
+            }
+             */
+
             val preview = Preview.Builder()
                 .apply {
                     if (targetRotation != TARGET_ROTATION_UNINITIALIZED)
@@ -329,40 +389,40 @@ class MainActivity : AppCompatActivity() {
                 }
                 .build()
                 .also {
+                    viewBinding.viewFinder.scaleType = scaleType
                     it.setSurfaceProvider(viewBinding.viewFinder.surfaceProvider)
                 }
 
             val cameraSelector = CameraSelector.Builder().requireLensFacing(lensFacing).build()
 
-            imageCapture = ImageCapture.Builder()
-                .setCaptureMode(captureMode)
-                .setFlashMode(flashMode)
-                .apply {
-                    if (jpegQuality != JPEG_QUALITY_UNINITIALIZED)
-                        setJpegQuality(jpegQuality)
-                    if (targetRotation != TARGET_ROTATION_UNINITIALIZED)
-                        setTargetRotation(targetRotation)
+            when (currUseCase) {
+                CameraUseCase.PREVIEW_VIDEO -> {
+                    val recorder = Recorder.Builder()
+                        .setQualitySelector(QualitySelector.from(Quality.HIGHEST))
+                        .build()
+                    videoCapture = VideoCapture.withOutput(recorder)
+                } else -> {
+                    imageCapture = ImageCapture.Builder()
+                        .setCaptureMode(captureMode)
+                        .setFlashMode(flashMode)
+                        .apply {
+                            if (jpegQuality != JPEG_QUALITY_UNINITIALIZED)
+                                setJpegQuality(jpegQuality)
+                            if (targetRotation != TARGET_ROTATION_UNINITIALIZED)
+                                setTargetRotation(targetRotation)
+                        }
+                        .build()
                 }
-                .build()
-
-            val recorder = Recorder.Builder()
-                .setQualitySelector(QualitySelector.from(Quality.HIGHEST))
-                .build()
-            videoCapture = VideoCapture.withOutput(recorder)
-
-            /*
-            val imageAnalyzer = ImageAnalysis.Builder()
-                .build()
-                .also {
-                    it.setAnalyzer(cameraExecutor, LuminosityAnalyzer { luma ->
-                        Log.d(TAG, "Average luminosity: $luma")
-                    })
-                }
-             */
+            }
 
             try {
                 cameraProvider.unbindAll()
-                val camera = cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture/*, videoCapture*/)
+                // NOTE(davide): Does anyone know how to pass the array of UseCase directly to
+                // avoid the if? It keeps complaining about impossible casts...
+                val camera = if (currUseCase == CameraUseCase.PREVIEW_VIDEO)
+                    cameraProvider.bindToLifecycle(this, cameraSelector, preview, videoCapture)
+                else
+                    cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
                 currCameraInfo = camera.cameraInfo
             } catch(exc: Exception) {
                 Log.e(TAG, "Use case binding failed", exc)

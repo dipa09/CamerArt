@@ -7,15 +7,27 @@
   - setResolutionSelector
   - Zero lag mode for devices that support it
   - Save photos in other formats?
+  - Take photo after delay?
 
 - Video Capture
   - Stop/Resume
+  - Select resolution
+  - Timed recording
+
+- Gestures
+  - Start photo/video on click/long click/something else?
+  - Swipe left/right to change to setting or gallery activity
+  - Zoom
 
 - Setting Fragment
   - Set output folder for saving photos and videos?
   - Use user locale for file names
 
-- Make the mute/unmute button invisible during video recording
 - Camera UI
+  - Use a single button for photo and video
+  - Add pause button when a video recording is started
+  - Make the mute button invisible during video recording
+
+
 - Something that uses ImageAnalysis
 - Something that uses the Advance API

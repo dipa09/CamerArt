@@ -34,4 +34,15 @@
         <item>270</item>
     </string-array>
 
+    <string-array name="scale_names">
+        <item>Center</item>
+        <item>Start</item>
+        <item>End</item>
+    </string-array>
+    <string-array name="scale_values">
+        <item>center</item>
+        <item>start</item>
+        <item>end</item>
+    </string-array>
+
 </resources>
