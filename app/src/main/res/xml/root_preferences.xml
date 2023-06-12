@@ -46,6 +46,14 @@
             app:key="pref_use_video_temp"
             app:title="Do a video"
             app:defaultValue="false" />
+
+        <ListPreference
+            app:key="pref_video_quality"
+            app:title="Quality"
+            app:entries="@array/empty"
+            app:entryValues="@array/empty"
+            app:useSimpleSummaryProvider="true" />
+
     </PreferenceCategory>
 
     <PreferenceCategory app:title="Preview">

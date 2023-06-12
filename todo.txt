@@ -1,6 +1,5 @@
 - Camera Configuration
   - Detect devices capable of Preview + Vide + Photo use case
-  - Button between Preview + Video and Preview + Photo
   - Ensure that front and back cameras are available
 
 - Image Capture

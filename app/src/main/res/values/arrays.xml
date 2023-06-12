@@ -45,4 +45,7 @@
         <item>end</item>
     </string-array>
 
+    <string-array name="empty">
+    </string-array>
+
 </resources>

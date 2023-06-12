@@ -61,13 +61,15 @@ class MainActivity : AppCompatActivity() {
         PREVIEW_CAPTURE_VIDEO(PREVIEW.value or CAPTURE.value or VIDEO.value)
     }
 
+    enum class SupportedQuality { NONE, SD, HD, FHD, UHD, COUNT }
+
     private lateinit var viewBinding: ActivityMainBinding
     private lateinit var cameraExecutor: ExecutorService
 
     private var imageCapture: ImageCapture? = null
     private var videoCapture: VideoCapture<Recorder>? = null
     private var recording: Recording? = null
-    private var currCameraInfo: CameraInfo? = null
+    private var currCamInfo: CameraInfo? = null
 
     // Settings
     private var currUseCase: CameraUseCase = CameraUseCase.PREVIEW_CAPTURE
@@ -80,6 +82,7 @@ class MainActivity : AppCompatActivity() {
 
     // Video
     private var audioEnabled: Boolean = true
+    private var videoQuality: Quality = Quality.HIGHEST
 
     // Preview
     private var scaleType: PreviewView.ScaleType = PreviewView.ScaleType.FIT_CENTER
@@ -136,11 +139,7 @@ class MainActivity : AppCompatActivity() {
         viewBinding.videoCaptureButton.setOnClickListener { captureVideo() }
         viewBinding.muteButton.setOnClickListener { toggleAudio() }
         viewBinding.cameraButton.setOnClickListener { toggleCamera() }
-
-        viewBinding.settingsButton.setOnClickListener {
-            val intent = Intent(this, SettingActivity::class.java)
-            this.startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this).toBundle())
-        }
+        viewBinding.settingsButton.setOnClickListener { launchSetting() }
 
         viewBinding.viewFinder.setOnClickListener {
             if (photoOnClickEnabled)
@@ -167,6 +166,29 @@ class MainActivity : AppCompatActivity() {
             CameraSelector.LENS_FACING_BACK
         }
         startCamera()
+    }
+
+    private fun launchSetting() {
+        val intent = Intent(this, SettingActivity::class.java)
+
+        val camInfo = currCamInfo
+        if (camInfo != null) {
+            val qualities = QualitySelector.getSupportedQualities(camInfo)
+            val values = Array<String>(qualities.size + 2){""}
+            for (i in qualities.indices) {
+                when (qualities[i]) {
+                    Quality.SD -> values[i] = SupportedQuality.SD.name
+                    Quality.HD -> values[i] = SupportedQuality.HD.name
+                    Quality.FHD -> values[i] = SupportedQuality.FHD.name
+                    Quality.UHD -> values[i] = SupportedQuality.UHD.name
+                }
+            }
+            values[values.size - 2] = "Highest"
+            values[values.size - 1] = "Lowest"
+            intent.putExtra("supportedQualities", values)
+        }
+
+        this.startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this).toBundle())
     }
 
     // NOTE(davide): For some reason, sometimes you need to delete app's data if you edit
@@ -235,6 +257,17 @@ class MainActivity : AppCompatActivity() {
                         CameraUseCase.PREVIEW_VIDEO
                     else
                         CameraUseCase.PREVIEW_CAPTURE
+                }
+
+                "pref_video_quality" -> {
+                    videoQuality = when (pref.value) {
+                        "SD" -> Quality.SD
+                        "HD" -> Quality.HD
+                        "FHD" -> Quality.FHD
+                        "UHD" -> Quality.UHD
+                        "Lowest" -> Quality.LOWEST
+                        else -> Quality.HIGHEST
+                    }
                 }
 
             }
@@ -344,16 +377,14 @@ class MainActivity : AppCompatActivity() {
                     }
                     is VideoRecordEvent.Finalize -> {
                         if (!recordEvent.hasError()) {
-                            val msg = "Video capture succeeded: " +
-                                    "${recordEvent.outputResults.outputUri}"
+                            val msg = "Video capture succeeded: " + "${recordEvent.outputResults.outputUri}"
                             Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT)
                                 .show()
                             Log.d(TAG, msg)
                         } else {
                             recording?.close()
                             recording = null
-                            Log.e(TAG, "Video capture ends with error: " +
-                                    "${recordEvent.error}")
+                            Log.e(TAG, "Video capture ends with error: " + "${recordEvent.error}")
                         }
                         viewBinding.videoCaptureButton.apply {
                             text = getString(R.string.start_capture)
@@ -372,16 +403,6 @@ class MainActivity : AppCompatActivity() {
         cameraProviderFuture.addListener({
             val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
 
-            // TODO(davide): List cameras info
-            /*
-            var camIdx: Int = 0
-            for (camInfo in cameraProvider.availableCameraInfos.iterator()) {
-                //camInfo.getLensFacing()
-                Log.i(TAG, "[$camIdx] lens")
-                ++camIdx
-            }
-             */
-
             val preview = Preview.Builder()
                 .apply {
                     if (targetRotation != TARGET_ROTATION_UNINITIALIZED)
@@ -398,7 +419,7 @@ class MainActivity : AppCompatActivity() {
             when (currUseCase) {
                 CameraUseCase.PREVIEW_VIDEO -> {
                     val recorder = Recorder.Builder()
-                        .setQualitySelector(QualitySelector.from(Quality.HIGHEST))
+                        .setQualitySelector(QualitySelector.from(videoQuality))
                         .build()
                     videoCapture = VideoCapture.withOutput(recorder)
                 } else -> {
@@ -423,7 +444,7 @@ class MainActivity : AppCompatActivity() {
                     cameraProvider.bindToLifecycle(this, cameraSelector, preview, videoCapture)
                 else
                     cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
-                currCameraInfo = camera.cameraInfo
+                currCamInfo = camera.cameraInfo
             } catch(exc: Exception) {
                 Log.e(TAG, "Use case binding failed", exc)
             }
@@ -438,28 +459,4 @@ class MainActivity : AppCompatActivity() {
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
         ContextCompat.checkSelfPermission(baseContext, it) == PackageManager.PERMISSION_GRANTED
     }
-
-    /*
-    private class LuminosityAnalyzer(private val listener: LumaListener) : ImageAnalysis.Analyzer {
-
-        private fun ByteBuffer.toByteArray(): ByteArray {
-            rewind()    // Rewind the buffer to zero
-            val data = ByteArray(remaining())
-            get(data)   // Copy the buffer into a byte array
-            return data // Return the byte array
-        }
-
-        override fun analyze(image: ImageProxy) {
-
-            val buffer = image.planes[0].buffer
-            val data = buffer.toByteArray()
-            val pixels = data.map { it.toInt() and 0xFF }
-            val luma = pixels.average()
-
-            listener(luma)
-
-            image.close()
-        }
-    }
-    */
 }

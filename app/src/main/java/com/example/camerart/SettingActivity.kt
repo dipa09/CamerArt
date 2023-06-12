@@ -9,6 +9,7 @@ import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceManager
 import androidx.preference.SeekBarPreference
+import com.example.camerart.MainActivity.SupportedQuality
 
 class SettingActivity : AppCompatActivity() {
     class SettingsFragment : PreferenceFragmentCompat() {
@@ -26,8 +27,17 @@ class SettingActivity : AppCompatActivity() {
                         resources.getString(R.string.capture_value_quality) -> prefJpegQuality.value = MainActivity.JPEG_QUALITY_MAX
                     }
 
-                    //Log.i("PREF CHANGED", mode)
                     true
+                }
+            }
+
+            // NOTE(davide): Display only available qualities
+            val prefVideoQuality: ListPreference? = findPreference("pref_video_quality")
+            if (prefVideoQuality != null) {
+                val supportedQualities = arguments?.getStringArray("supportedQualities")
+                if (supportedQualities != null) {
+                    prefVideoQuality.entryValues = supportedQualities
+                    prefVideoQuality.entries = supportedQualities
                 }
             }
         }
@@ -36,9 +46,13 @@ class SettingActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_setting)
 
+        // NOTE(davide): Pass arguments from MainActivity to SettingFragment
+        val frag = SettingsFragment()
+        frag.arguments = intent.extras
+
         supportFragmentManager
             .beginTransaction()
-            .replace(android.R.id.content, SettingsFragment())
+            .replace(android.R.id.content, frag)
             .commit()
     }
 }
