@@ -60,4 +60,14 @@
         android:text="@string/start_capture"
         />
 
+    <ImageButton
+        android:id="@+id/play_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_toRightOf="@id/video_capture_button"
+        android:src="@android:drawable/ic_media_pause"
+        android:visibility="invisible"  />
+
+
 </RelativeLayout>

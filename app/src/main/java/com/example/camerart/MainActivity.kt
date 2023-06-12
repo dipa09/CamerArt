@@ -11,6 +11,7 @@ import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
 import android.view.Surface
+import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -71,7 +72,6 @@ class MainActivity : AppCompatActivity() {
     private var recording: Recording? = null
     private var currCamInfo: CameraInfo? = null
 
-    // Settings
     private var currUseCase: CameraUseCase = CameraUseCase.PREVIEW_CAPTURE
     // Capture
     private var lensFacing: Int = CameraSelector.LENS_FACING_BACK
@@ -83,6 +83,7 @@ class MainActivity : AppCompatActivity() {
     // Video
     private var audioEnabled: Boolean = true
     private var videoQuality: Quality = Quality.HIGHEST
+    private var playing: Boolean = false
 
     // Preview
     private var scaleType: PreviewView.ScaleType = PreviewView.ScaleType.FIT_CENTER
@@ -140,6 +141,7 @@ class MainActivity : AppCompatActivity() {
         viewBinding.muteButton.setOnClickListener { toggleAudio() }
         viewBinding.cameraButton.setOnClickListener { toggleCamera() }
         viewBinding.settingsButton.setOnClickListener { launchSetting() }
+        viewBinding.playButton.setOnClickListener { controlVideoRecording() }
 
         viewBinding.viewFinder.setOnClickListener {
             if (photoOnClickEnabled)
@@ -360,6 +362,20 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    private fun controlVideoRecording() {
+        val rec = recording
+        if (rec != null) {
+            if (playing) {
+                rec.pause()
+                Toast.makeText(baseContext, "Paused", Toast.LENGTH_SHORT).show()
+            } else {
+                rec.resume()
+                Toast.makeText(baseContext, "Resumed", Toast.LENGTH_SHORT).show()
+            }
+            playing = !playing
+        }
+    }
+
     private fun captureVideo() {
         val videoCapture = this.videoCapture ?: return
 
@@ -370,6 +386,8 @@ class MainActivity : AppCompatActivity() {
             // Stop the current recording session.
             curRecording.stop()
             recording = null
+            viewBinding.playButton.visibility = View.INVISIBLE
+            playing = false
             return
         }
 
@@ -399,7 +417,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             .start(ContextCompat.getMainExecutor(this)) { recordEvent ->
-                when(recordEvent) {
+                when (recordEvent) {
                     is VideoRecordEvent.Start -> {
                         viewBinding.videoCaptureButton.apply {
                             text = getString(R.string.stop_capture)
@@ -424,6 +442,9 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
+
+        viewBinding.playButton.visibility = View.VISIBLE
+        playing = true
     }
 
     @SuppressLint("WrongConstant")
