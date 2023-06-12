@@ -52,7 +52,7 @@
             app:title="Quality"
             app:entries="@array/empty"
             app:entryValues="@array/empty"
-            app:useSimpleSummaryProvider="true" />
+            app:useSimpleSummaryProvider="false" />
 
     </PreferenceCategory>
 

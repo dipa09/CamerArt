@@ -10,7 +10,6 @@
 
 - Video Capture
   - Stop/Resume
-  - Select resolution
   - Timed recording
 
 - Gestures

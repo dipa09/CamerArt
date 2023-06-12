@@ -174,18 +174,49 @@ class MainActivity : AppCompatActivity() {
         val camInfo = currCamInfo
         if (camInfo != null) {
             val qualities = QualitySelector.getSupportedQualities(camInfo)
+
             val values = Array<String>(qualities.size + 2){""}
+            val resolutionNames = Array<String>(qualities.size + 2){""}
+
             for (i in qualities.indices) {
-                when (qualities[i]) {
-                    Quality.SD -> values[i] = SupportedQuality.SD.name
-                    Quality.HD -> values[i] = SupportedQuality.HD.name
-                    Quality.FHD -> values[i] = SupportedQuality.FHD.name
-                    Quality.UHD -> values[i] = SupportedQuality.UHD.name
+                val quality = qualities[i]
+                var prefix: String = ""
+                var p: Int
+
+                when (quality) {
+                    Quality.SD -> {
+                        prefix = "SD"
+                        p = 480
+                        values[i] = SupportedQuality.SD.name
+                    }
+                    Quality.HD -> {
+                        prefix = "HD"
+                        p = 720
+                        values[i] = SupportedQuality.HD.name
+                    }
+                    Quality.FHD -> {
+                        prefix = "Full HD"
+                        p = 1080
+                        values[i] = SupportedQuality.FHD.name
+                    }
+                    Quality.UHD -> {
+                        prefix = "4K ultra HD"
+                        p = 2160
+                        values[i] = SupportedQuality.UHD.name
+                    }
+                    else -> continue
                 }
+
+                val size = QualitySelector.getResolution(camInfo, quality)
+                resolutionNames[i] = prefix + " " + size.toString() + " (${p}p)"
             }
             values[values.size - 2] = "Highest"
             values[values.size - 1] = "Lowest"
+            resolutionNames[resolutionNames.size - 2] = QualitySelector.getResolution(camInfo, Quality.HIGHEST).toString()
+            resolutionNames[resolutionNames.size - 1] = QualitySelector.getResolution(camInfo, Quality.LOWEST).toString()
+
             intent.putExtra("supportedQualities", values)
+            intent.putExtra("supportedResolutions", resolutionNames)
         }
 
         this.startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this).toBundle())

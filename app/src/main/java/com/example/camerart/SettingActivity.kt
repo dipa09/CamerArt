@@ -13,6 +13,10 @@ import com.example.camerart.MainActivity.SupportedQuality
 
 class SettingActivity : AppCompatActivity() {
     class SettingsFragment : PreferenceFragmentCompat() {
+        var supportedQualities: Array<String>? = null
+        var supportedResolutions: Array<String>? = null
+
+
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             setPreferencesFromResource(R.xml.root_preferences, rootKey)
 
@@ -34,12 +38,32 @@ class SettingActivity : AppCompatActivity() {
             // NOTE(davide): Display only available qualities
             val prefVideoQuality: ListPreference? = findPreference("pref_video_quality")
             if (prefVideoQuality != null) {
-                val supportedQualities = arguments?.getStringArray("supportedQualities")
+                supportedQualities = arguments?.getStringArray("supportedQualities")
+                supportedResolutions = arguments?.getStringArray("supportedResolutions")
                 if (supportedQualities != null) {
                     prefVideoQuality.entryValues = supportedQualities
                     prefVideoQuality.entries = supportedQualities
                 }
+
+                prefVideoQuality.summaryProvider = Preference.SummaryProvider<ListPreference> { _ ->
+                    lookupQualityResolutionSummary(prefVideoQuality.value)
+                }
             }
+        }
+
+        private fun lookupQualityResolutionSummary(qualityName: String?): String {
+            var result = "Not selected"
+            if (qualityName != null && supportedQualities != null && supportedResolutions != null) {
+                assert(supportedResolutions!!.size == supportedQualities!!.size)
+                for (i in supportedQualities!!.indices) {
+                    if (qualityName == supportedQualities!![i]) {
+                        result = supportedResolutions!![i]
+                        break
+                    }
+                }
+            }
+
+            return result
         }
     }
     override fun onCreate(savedInstanceState: Bundle?) {
