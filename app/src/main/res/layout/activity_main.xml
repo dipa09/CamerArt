@@ -69,5 +69,16 @@
         android:src="@android:drawable/ic_media_pause"
         android:visibility="invisible"  />
 
+    <TextView
+        android:id="@+id/zoom_ratio_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:visibility="invisible"
+        android:text="nnn"
+        android:textColor="@color/white"
+        android:textStyle="bold"
+        android:textSize="30sp"
+        />
 
 </RelativeLayout>

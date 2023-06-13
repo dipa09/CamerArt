@@ -12,7 +12,7 @@
 
         <ListPreference
             app:key="pref_capture"
-            app:title="Capture Mode"
+            app:title="Mode"
             app:entries="@array/capture_names"
             app:entryValues="@array/capture_values"
             app:useSimpleSummaryProvider="true"

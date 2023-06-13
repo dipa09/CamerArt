@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
+import android.view.ScaleGestureDetector
 import android.view.Surface
 import android.view.View
 import android.widget.Toast
@@ -66,11 +67,13 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var viewBinding: ActivityMainBinding
     private lateinit var cameraExecutor: ExecutorService
+    private lateinit var scaleDetector: ScaleGestureDetector
 
     private var imageCapture: ImageCapture? = null
     private var videoCapture: VideoCapture<Recorder>? = null
     private var recording: Recording? = null
     private var currCamInfo: CameraInfo? = null
+    private var camControl: CameraControl? = null
 
     private var currUseCase: CameraUseCase = CameraUseCase.PREVIEW_CAPTURE
     // Capture
@@ -124,10 +127,11 @@ class MainActivity : AppCompatActivity() {
             enterTransition = Slide()
             exitTransition = Explode()
         }
-         */
+        */
 
         viewBinding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(viewBinding.root)
+        scaleDetector = ScaleGestureDetector(viewBinding.viewFinder.context, scaleListener)
 
         if (allPermissionsGranted()) {
             loadPreferences()
@@ -143,9 +147,15 @@ class MainActivity : AppCompatActivity() {
         viewBinding.settingsButton.setOnClickListener { launchSetting() }
         viewBinding.playButton.setOnClickListener { controlVideoRecording() }
 
+        /*
         viewBinding.viewFinder.setOnClickListener {
             if (photoOnClickEnabled)
                 takePhoto()
+        }*/
+
+        viewBinding.viewFinder.setOnTouchListener { _, motionEvent ->
+            scaleDetector.onTouchEvent(motionEvent)
+            return@setOnTouchListener true
         }
 
         cameraExecutor = Executors.newSingleThreadExecutor()
@@ -427,8 +437,7 @@ class MainActivity : AppCompatActivity() {
                     is VideoRecordEvent.Finalize -> {
                         if (!recordEvent.hasError()) {
                             val msg = "Video capture succeeded: " + "${recordEvent.outputResults.outputUri}"
-                            Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT)
-                                .show()
+                            Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
                             Log.d(TAG, msg)
                         } else {
                             recording?.close()
@@ -457,8 +466,10 @@ class MainActivity : AppCompatActivity() {
 
             val preview = Preview.Builder()
                 .apply {
-                    if (targetRotation != TARGET_ROTATION_UNINITIALIZED)
+                    if (currUseCase == CameraUseCase.PREVIEW_CAPTURE &&
+                        targetRotation != TARGET_ROTATION_UNINITIALIZED) {
                         setTargetRotation(targetRotation)
+                    }
                 }
                 .build()
                 .also {
@@ -497,6 +508,7 @@ class MainActivity : AppCompatActivity() {
                 else
                     cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
                 currCamInfo = camera.cameraInfo
+                camControl = camera.cameraControl
             } catch(exc: Exception) {
                 Log.e(TAG, "Use case binding failed", exc)
             }
@@ -510,5 +522,28 @@ class MainActivity : AppCompatActivity() {
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
         ContextCompat.checkSelfPermission(baseContext, it) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private val scaleListener = object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+        override fun onScale(detector: ScaleGestureDetector): Boolean {
+            val zoomRatio: Float = currCamInfo?.zoomState?.value?.zoomRatio ?: 1f
+            val zoomLinear = currCamInfo?.zoomState?.value?.linearZoom
+            if (zoomLinear != null) {
+                viewBinding.zoomRatioText.text = "${Math.round(zoomLinear*100)}%"
+            }
+
+            camControl?.setZoomRatio(zoomRatio*detector.scaleFactor)
+            return true
+        }
+
+        override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
+            viewBinding.zoomRatioText.visibility = View.VISIBLE
+            return super.onScaleBegin(detector)
+        }
+
+        override fun onScaleEnd(detector: ScaleGestureDetector) {
+            viewBinding.zoomRatioText.visibility = View.INVISIBLE
+            super.onScaleEnd(detector)
+        }
     }
 }
