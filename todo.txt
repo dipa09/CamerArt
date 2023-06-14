@@ -21,9 +21,7 @@
 
 - Camera UI
   - Use a single button for photo and video
-  - Add pause button when a video recording is started
-  - Make the mute button invisible during video recording
-
+  - Restore zoom between sessions?
 
 - Something that uses ImageAnalysis
 - Something that uses the Advance API

@@ -10,6 +10,8 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
+import android.view.GestureDetector
+import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.Surface
 import android.view.View
@@ -23,12 +25,14 @@ import androidx.camera.video.VideoCapture
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.core.content.PermissionChecker
+import androidx.core.view.GestureDetectorCompat
 import androidx.preference.PreferenceManager
 import com.example.camerart.databinding.ActivityMainBinding
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 typealias LumaListener = (luma: Double) -> Unit
 
@@ -67,7 +71,10 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var viewBinding: ActivityMainBinding
     private lateinit var cameraExecutor: ExecutorService
+
+    private lateinit var  commonDetector: GestureDetectorCompat
     private lateinit var scaleDetector: ScaleGestureDetector
+    private var scaling: Boolean = false
 
     private var imageCapture: ImageCapture? = null
     private var videoCapture: VideoCapture<Recorder>? = null
@@ -117,6 +124,7 @@ class MainActivity : AppCompatActivity() {
         cameraExecutor.shutdown()
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -131,6 +139,7 @@ class MainActivity : AppCompatActivity() {
 
         viewBinding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(viewBinding.root)
+        commonDetector = GestureDetectorCompat(viewBinding.viewFinder.context, commonListener)
         scaleDetector = ScaleGestureDetector(viewBinding.viewFinder.context, scaleListener)
 
         if (allPermissionsGranted()) {
@@ -147,16 +156,14 @@ class MainActivity : AppCompatActivity() {
         viewBinding.settingsButton.setOnClickListener { launchSetting() }
         viewBinding.playButton.setOnClickListener { controlVideoRecording() }
 
-        /*
-        viewBinding.viewFinder.setOnClickListener {
-            if (photoOnClickEnabled)
-                takePhoto()
-        }*/
-
         viewBinding.viewFinder.setOnTouchListener { _, motionEvent ->
             scaleDetector.onTouchEvent(motionEvent)
+            if (!scaling)
+                commonDetector.onTouchEvent(motionEvent)
+
             return@setOnTouchListener true
         }
+
 
         cameraExecutor = Executors.newSingleThreadExecutor()
     }
@@ -397,9 +404,12 @@ class MainActivity : AppCompatActivity() {
             curRecording.stop()
             recording = null
             viewBinding.playButton.visibility = View.INVISIBLE
+            viewBinding.muteButton.visibility = View.VISIBLE
             playing = false
             return
         }
+
+        viewBinding.muteButton.visibility = View.INVISIBLE
 
         // create and start a new recording session
         val name = SimpleDateFormat(FILENAME_FORMAT, Locale.US).format(System.currentTimeMillis())
@@ -526,24 +536,65 @@ class MainActivity : AppCompatActivity() {
 
     private val scaleListener = object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
         override fun onScale(detector: ScaleGestureDetector): Boolean {
-            val zoomRatio: Float = currCamInfo?.zoomState?.value?.zoomRatio ?: 1f
-            val zoomLinear = currCamInfo?.zoomState?.value?.linearZoom
-            if (zoomLinear != null) {
-                viewBinding.zoomRatioText.text = "${Math.round(zoomLinear*100)}%"
-            }
+            val state = currCamInfo?.zoomState?.value ?: return true
 
-            camControl?.setZoomRatio(zoomRatio*detector.scaleFactor)
+            val zoomRatio = state.zoomRatio*detector.scaleFactor
+            if (zoomRatio < state.minZoomRatio || zoomRatio > state.maxZoomRatio)
+                return true
+
+            viewBinding.zoomRatioText.text = "${Math.round(state.linearZoom*100)}%"
+            camControl?.setZoomRatio(zoomRatio)
             return true
         }
 
         override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
+            scaling = true
             viewBinding.zoomRatioText.visibility = View.VISIBLE
             return super.onScaleBegin(detector)
         }
 
         override fun onScaleEnd(detector: ScaleGestureDetector) {
+            scaling = false
             viewBinding.zoomRatioText.visibility = View.INVISIBLE
             super.onScaleEnd(detector)
+        }
+    }
+
+    private val commonListener = object : GestureDetector.SimpleOnGestureListener() {
+        override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+            //Log.d("Gesture", "Single tap $e")
+
+            val ctrl = camControl
+            if (ctrl != null) {
+                val pointFactory = viewBinding.viewFinder.meteringPointFactory
+                val p1 = pointFactory.createPoint(e.x, e.y)
+                //val p2 = pointFactory.createPoint(e.x)
+                val action = FocusMeteringAction.Builder(p1)
+                    .setAutoCancelDuration(2, TimeUnit.SECONDS)
+                    .build()
+
+                // TODO(davide): Draw a circle to let the user know
+                ctrl.startFocusAndMetering(action)
+            }
+
+            return true
+        }
+
+        override fun onDoubleTap(e: MotionEvent): Boolean {
+            //Log.d("Gesture", "Double tap")
+
+            val ctrl = camControl
+            val camInfo = currCamInfo
+            if (flashMode != ImageCapture.FLASH_MODE_OFF && ctrl != null && camInfo != null) {
+                val newState = (camInfo.torchState.value == TorchState.OFF)
+                ctrl.enableTorch(newState)
+            }
+
+            return true
+        }
+
+        override fun onLongPress(e: MotionEvent) {
+            Log.d("Gesture", "long press $e")
         }
     }
 }
