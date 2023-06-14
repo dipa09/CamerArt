@@ -13,7 +13,6 @@
 
 - Gestures
   - Start photo/video on click/long-click/something else?
-  - Swipe left/right to change to setting or gallery activity
 
 - Setting Fragment
   - Set output folder for saving photos and videos?

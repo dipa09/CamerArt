@@ -9,12 +9,10 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
+import android.transition.Explode
+import android.transition.Slide
 import android.util.Log
-import android.view.GestureDetector
-import android.view.MotionEvent
-import android.view.ScaleGestureDetector
-import android.view.Surface
-import android.view.View
+import android.view.*
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -33,6 +31,7 @@ import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlin.math.abs
 
 typealias LumaListener = (luma: Double) -> Unit
 
@@ -54,6 +53,9 @@ class MainActivity : AppCompatActivity() {
         const val JPEG_QUALITY_LATENCY: Int = 95
         const val JPEG_QUALITY_MAX: Int = 100
         const val TARGET_ROTATION_UNINITIALIZED = -1
+
+        const val SWIPE_THRESHOLD = 100
+        const val SWIPE_VELOCITY_THRESHOLD = 100
     }
 
     enum class CameraUseCase(val value: Int) {
@@ -72,15 +74,17 @@ class MainActivity : AppCompatActivity() {
     private lateinit var viewBinding: ActivityMainBinding
     private lateinit var cameraExecutor: ExecutorService
 
+    // Gesture stuff
     private lateinit var  commonDetector: GestureDetectorCompat
     private lateinit var scaleDetector: ScaleGestureDetector
     private var scaling: Boolean = false
+    //
 
     private var imageCapture: ImageCapture? = null
     private var videoCapture: VideoCapture<Recorder>? = null
     private var recording: Recording? = null
     private var currCamInfo: CameraInfo? = null
-    private var camControl: CameraControl? = null
+    private var currCamControl: CameraControl? = null
 
     private var currUseCase: CameraUseCase = CameraUseCase.PREVIEW_CAPTURE
     // Capture
@@ -133,7 +137,7 @@ class MainActivity : AppCompatActivity() {
         with(window) {
             requestFeature(Window.FEATURE_ACTIVITY_TRANSITIONS)
             enterTransition = Slide()
-            exitTransition = Explode()
+            exitTransition = Slide()
         }
         */
 
@@ -192,6 +196,7 @@ class MainActivity : AppCompatActivity() {
 
         val camInfo = currCamInfo
         if (camInfo != null) {
+            // TODO(davide): Do this only when the camera has changed. e.g. front/back
             val qualities = QualitySelector.getSupportedQualities(camInfo)
 
             val values = Array<String>(qualities.size + 2){""}
@@ -518,7 +523,7 @@ class MainActivity : AppCompatActivity() {
                 else
                     cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
                 currCamInfo = camera.cameraInfo
-                camControl = camera.cameraControl
+                currCamControl = camera.cameraControl
             } catch(exc: Exception) {
                 Log.e(TAG, "Use case binding failed", exc)
             }
@@ -536,14 +541,15 @@ class MainActivity : AppCompatActivity() {
 
     private val scaleListener = object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
         override fun onScale(detector: ScaleGestureDetector): Boolean {
-            val state = currCamInfo?.zoomState?.value ?: return true
-
-            val zoomRatio = state.zoomRatio*detector.scaleFactor
-            if (zoomRatio < state.minZoomRatio || zoomRatio > state.maxZoomRatio)
-                return true
-
-            viewBinding.zoomRatioText.text = "${Math.round(state.linearZoom*100)}%"
-            camControl?.setZoomRatio(zoomRatio)
+            val camControl = currCamControl
+            val state = currCamInfo?.zoomState?.value
+            if (camControl != null && state != null) {
+                val zoomRatio = state.zoomRatio*detector.scaleFactor
+                if (zoomRatio >= state.minZoomRatio && zoomRatio <= state.maxZoomRatio) {
+                    viewBinding.zoomRatioText.text = "${Math.round(state.linearZoom*100)}%"
+                    camControl.setZoomRatio(zoomRatio)
+                }
+            }
             return true
         }
 
@@ -564,8 +570,8 @@ class MainActivity : AppCompatActivity() {
         override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
             //Log.d("Gesture", "Single tap $e")
 
-            val ctrl = camControl
-            if (ctrl != null) {
+            val camControl = currCamControl
+            if (camControl != null) {
                 val pointFactory = viewBinding.viewFinder.meteringPointFactory
                 val p1 = pointFactory.createPoint(e.x, e.y)
                 //val p2 = pointFactory.createPoint(e.x)
@@ -574,27 +580,53 @@ class MainActivity : AppCompatActivity() {
                     .build()
 
                 // TODO(davide): Draw a circle to let the user know
-                ctrl.startFocusAndMetering(action)
+                camControl.startFocusAndMetering(action)
             }
-
             return true
         }
 
         override fun onDoubleTap(e: MotionEvent): Boolean {
             //Log.d("Gesture", "Double tap")
 
-            val ctrl = camControl
+            val camControl = currCamControl
             val camInfo = currCamInfo
-            if (flashMode != ImageCapture.FLASH_MODE_OFF && ctrl != null && camInfo != null) {
+            if (flashMode != ImageCapture.FLASH_MODE_OFF && camControl != null && camInfo != null) {
                 val newState = (camInfo.torchState.value == TorchState.OFF)
-                ctrl.enableTorch(newState)
+                camControl.enableTorch(newState)
             }
-
             return true
         }
 
         override fun onLongPress(e: MotionEvent) {
             Log.d("Gesture", "long press $e")
+        }
+
+        override fun onFling(
+            start: MotionEvent,
+            end: MotionEvent,
+            velocityX: Float,
+            velocityY: Float
+        ): Boolean {
+            // TODO(davide): Ignore diagonal swipes
+
+            //Log.d("Gesture", "Horizontal swipe start=(${e1.x}, ${e1.y}) end=(${e2.x}, ${e2.y}) vX=$velocityX Vy=$velocityY")
+            val diffX = end.x - start.x
+            val diffY = end.y - start.y
+            if (abs(diffX) >= abs(diffY)) {
+                if (abs(diffX) > SWIPE_THRESHOLD && abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
+                    if (diffX < 0) {
+                        Log.d("Gesture", "Left swipe")
+                    } else {
+                        Log.d("Gesture", "Right swipe")
+
+                        launchSetting()
+                    }
+                }
+            } else {
+                Log.d("Gesture", "Vertical swipe")
+            }
+
+            return true
         }
     }
 }
