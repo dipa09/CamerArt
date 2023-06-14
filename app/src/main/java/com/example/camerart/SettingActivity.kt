@@ -2,20 +2,15 @@ package com.example.camerart
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.util.Log
-import android.widget.SeekBar
 import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
-import androidx.preference.PreferenceManager
 import androidx.preference.SeekBarPreference
-import com.example.camerart.MainActivity.SupportedQuality
 
 class SettingActivity : AppCompatActivity() {
     class SettingsFragment : PreferenceFragmentCompat() {
         var supportedQualities: Array<String>? = null
         var supportedResolutions: Array<String>? = null
-
 
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             setPreferencesFromResource(R.xml.root_preferences, rootKey)
@@ -47,6 +42,28 @@ class SettingActivity : AppCompatActivity() {
 
                 prefVideoQuality.summaryProvider = Preference.SummaryProvider<ListPreference> { _ ->
                     lookupQualityResolutionSummary(prefVideoQuality.value)
+                }
+            }
+
+            // NOTE(davide): Display available image formats
+            val prefImageFormat: ListPreference? = findPreference("pref_image_format")
+            if (prefImageFormat != null) {
+                val formats = arguments?.getIntArray("supportedImageFormats")
+                if (formats != null) {
+                    val names = Array<CharSequence>(formats.size) {""}
+
+                    val mimes = MainActivity.Mime.values()
+                    for (i in formats.indices) {
+                        names[i] = mimes[i].name
+                    }
+
+                    prefImageFormat.entryValues = names
+                    prefImageFormat.entries = names
+                }
+
+                prefImageFormat.summaryProvider = Preference.SummaryProvider<ListPreference> { _ ->
+                    val summary = prefImageFormat.value ?: "Not Selected"
+                    summary
                 }
             }
         }

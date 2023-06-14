@@ -5,7 +5,6 @@
 - Image Capture
   - setResolutionSelector
   - Zero lag mode for devices that support it
-  - Save photos in other formats?
   - Take photo after delay?
 
 - Video Capture

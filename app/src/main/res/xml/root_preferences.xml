@@ -39,6 +39,13 @@
             app:summary="Take a photo by tapping anywhere on the screen"
             app:defaultValue="false" />
 
+        <ListPreference
+            app:key="pref_image_format"
+            app:title="Format"
+            app:entries="@array/empty2"
+            app:entryValues="@array/empty2"
+            app:useSimpleSummaryProvider="false" />
+
     </PreferenceCategory>
 
     <PreferenceCategory app:title="Video">

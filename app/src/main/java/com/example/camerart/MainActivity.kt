@@ -21,6 +21,7 @@ import android.transition.Explode
 import android.transition.Slide
 import android.util.Log
 import android.view.*
+import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -28,6 +29,7 @@ import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.video.*
 import androidx.camera.video.VideoCapture
+import androidx.camera.video.internal.config.MimeInfo
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.core.content.PermissionChecker
@@ -42,6 +44,7 @@ import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlin.collections.ArrayList
 import kotlin.math.abs
 
 typealias LumaListener = (luma: Double) -> Unit
@@ -67,6 +70,10 @@ class MainActivity : AppCompatActivity() {
 
         const val SWIPE_THRESHOLD = 100
         const val SWIPE_VELOCITY_THRESHOLD = 100
+
+        const val MIME_TYPE_JPEG = "image/jpeg"
+        const val MIME_TYPE_PNG  = "image/png"
+        const val MIME_TYPE_WEBP = "image/webp"
     }
 
     enum class CameraUseCase(val value: Int) {
@@ -81,6 +88,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     enum class SupportedQuality { NONE, SD, HD, FHD, UHD, COUNT }
+
+    enum class Mime(private val mime: String) {
+        JPEG(MIME_TYPE_JPEG),
+        PNG(MIME_TYPE_PNG),
+        WEBP(MIME_TYPE_WEBP),
+
+        COUNT("");
+
+        override fun toString(): String {
+            return mime
+        }
+    }
 
     private lateinit var viewBinding: ActivityMainBinding
     private lateinit var cameraExecutor: ExecutorService
@@ -117,6 +136,9 @@ class MainActivity : AppCompatActivity() {
     // Behavioral
     private var photoOnClickEnabled: Boolean = false
     //
+
+    private lateinit var supportedMimes: IntArray
+    private var requestedFormat: Mime = Mime.JPEG
 
     private val activityResultLauncher =
         registerForActivityResult(
@@ -159,6 +181,7 @@ class MainActivity : AppCompatActivity() {
         scaleDetector = ScaleGestureDetector(viewBinding.viewFinder.context, scaleListener)
 
         if (allPermissionsGranted()) {
+            getAvailableMimes()
             loadPreferences()
             startCamera()
         } else {
@@ -253,9 +276,26 @@ class MainActivity : AppCompatActivity() {
 
             intent.putExtra("supportedQualities", values)
             intent.putExtra("supportedResolutions", resolutionNames)
+
+            intent.putExtra("supportedImageFormats", supportedMimes)
         }
 
         this.startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this).toBundle())
+    }
+
+    private fun getAvailableMimes() {
+        val availMimes = ArrayList<Int>(Mime.COUNT.ordinal)
+
+        // TODO(davide): Check API level for WEBP
+        val mimes = Mime.values()
+        for (i in 0 until Mime.COUNT.ordinal) {
+            val mime = mimes[i].toString()
+            if (MimeTypeMap.getSingleton().hasMimeType(mime))
+                availMimes.add(i)
+        }
+
+        assert(availMimes.size > 0)
+        supportedMimes = availMimes.toIntArray()
     }
 
     // NOTE(davide): For some reason, sometimes you need to delete app's data if you edit
@@ -290,6 +330,14 @@ class MainActivity : AppCompatActivity() {
                         "quality" -> ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY
                         //"zero" -> ImageCapture.CAPTURE_MODE_ZERO_SHUTTER_LAG
                         else -> ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
+                    }
+                }
+
+                "pref_image_format" -> {
+                    requestedFormat = try {
+                        enumValueOf(pref.value as String)
+                    } catch (ecx: IllegalArgumentException) {
+                        Mime.JPEG
                     }
                 }
 
@@ -369,9 +417,6 @@ class MainActivity : AppCompatActivity() {
         return values
     }
 
-    // TODO(davide): Get available mimes
-    // TODO(davide): Option for choosing image format
-
     // NOTE(davide): Apparently this language does not have unions
     private class CameraImage {
         var isBitmap: Boolean = false
@@ -406,24 +451,40 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    fun getBitmapFormat(fmt: Mime): Bitmap.CompressFormat {
+        return when (fmt) {
+            Mime.JPEG -> Bitmap.CompressFormat.JPEG
+            Mime.PNG -> Bitmap.CompressFormat.PNG
+            Mime.WEBP -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    Bitmap.CompressFormat.WEBP_LOSSY
+                } else {
+                    throw IllegalArgumentException("Invalid image format")
+                }
+            }
+            else -> throw IllegalArgumentException("Invalid image format")
+        }
+    }
+
+    // TODO(davide): Add more metadata. Location, producer, ...
     private fun takePhoto() {
         val imageCapture = imageCapture ?: return
 
         val name = SimpleDateFormat(FILENAME_FORMAT, Locale.US).format(System.currentTimeMillis())
-        if (fancyCapture) {
-            val contentValues = makeContentValues(name, "image/jpeg")
+        if (fancyCapture || requestedFormat != Mime.JPEG) {
+            val contentValues = makeContentValues(name, requestedFormat.toString())
+            // TODO(davide): Launch another executor for png, since it's very slow
             imageCapture.takePicture(
                 ContextCompat.getMainExecutor(this),
                 object : ImageCapture.OnImageCapturedCallback() {
                     override fun onCaptureSuccess(image: ImageProxy) {
-                        val reqFormat = Bitmap.CompressFormat.JPEG
-
                         // NOTE(davide): Apparently there is no way to tell CameraX to NOT compress
                         // the image in JPEG
-                        val img = if (reqFormat == Bitmap.CompressFormat.JPEG)
+                        val img = if (requestedFormat == Mime.JPEG) {
                             CameraImage(image)
-                        else
-                            CameraImage(imageProxyToBitmap(image), reqFormat)
+                        } else {
+                            CameraImage(imageProxyToBitmap(image), getBitmapFormat(requestedFormat))
+                        }
 
                         val uri = saveImage(contentResolver, contentValues, img)
                         if (uri != null) {
