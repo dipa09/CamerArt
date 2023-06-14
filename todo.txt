@@ -13,6 +13,7 @@
 
 - Gestures
   - Start photo/video on click/long-click/something else?
+  - Animate transitions?
 
 - Setting Fragment
   - Set output folder for saving photos and videos?
@@ -21,6 +22,16 @@
 - Camera UI
   - Use a single button for photo and video
   - Restore zoom between sessions?
+
+- Setting UI
+  - Enable the appbar, showing back button, title and overflow menu
+  - Overflow menu
+    - Info about gestures
+    - Info about the app
+
+- Using multiple cameras at the same time?
+  Is it possible to split the preview view in half and show front and back camera previews
+  at the same time?
 
 - Something that uses ImageAnalysis
 - Something that uses the Advance API

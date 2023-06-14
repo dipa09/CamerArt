@@ -3,12 +3,20 @@ package com.example.camerart
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.ActivityOptions
+import android.content.ContentResolver
 import android.content.ContentValues
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.media.Image
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.provider.MediaStore
+import android.provider.MediaStore.Audio.Media
 import android.transition.Explode
 import android.transition.Slide
 import android.util.Log
@@ -26,6 +34,9 @@ import androidx.core.content.PermissionChecker
 import androidx.core.view.GestureDetectorCompat
 import androidx.preference.PreferenceManager
 import com.example.camerart.databinding.ActivityMainBinding
+import java.io.IOException
+import java.io.OutputStream
+import java.nio.ByteBuffer
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.ExecutorService
@@ -93,6 +104,7 @@ class MainActivity : AppCompatActivity() {
     private var flashMode: Int = ImageCapture.FLASH_MODE_AUTO
     private var jpegQuality: Int = JPEG_QUALITY_UNINITIALIZED
     private var targetRotation: Int = TARGET_ROTATION_UNINITIALIZED
+    private var fancyCapture: Boolean = false
 
     // Video
     private var audioEnabled: Boolean = true
@@ -344,44 +356,135 @@ class MainActivity : AppCompatActivity() {
         Log.i(TAG, "ON RESUME ENDED")
     }
 
-    private fun takePhoto() {
-        // Get a stable reference of the modifiable image capture use case
-        val imageCapture = imageCapture ?: return
-
-        // Create time stamped name and MediaStore entry.
-        val name = SimpleDateFormat(FILENAME_FORMAT, Locale.US).format(System.currentTimeMillis())
-        val contentValues = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, name)
-            put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
-            if(Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
+    private fun makeContentValues(displayName: String, mimeType: String): ContentValues {
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
+            put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
+                //put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
                 put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/CameraX-Image")
             }
         }
 
-        // Create output options object which contains file + metadata
-        val outputOptions = ImageCapture.OutputFileOptions
-            .Builder(contentResolver,
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                contentValues)
-            .build()
+        return values
+    }
 
-        // Set up image capture listener, which is triggered after photo has
-        // been taken
-        imageCapture.takePicture(
-            outputOptions,
-            ContextCompat.getMainExecutor(this),
-            object : ImageCapture.OnImageSavedCallback {
-                override fun onError(exc: ImageCaptureException) {
-                    Log.e(TAG, "Photo capture failed: ${exc.message}", exc)
-                }
+    // TODO(davide): Get available mimes
+    // TODO(davide): Option for choosing image format
 
-                override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                    val msg = "Photo capture succeeded: ${output.savedUri}"
-                    Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
-                    Log.d(TAG, msg)
-                }
+    // NOTE(davide): Apparently this language does not have unions
+    private class CameraImage {
+        var isBitmap: Boolean = false
+
+        var image: ImageProxy? = null
+
+        // Accessible and never null when isBitmap is true
+        var bitmap: Bitmap? = null
+        var format: Bitmap.CompressFormat = Bitmap.CompressFormat.JPEG
+
+        constructor(bitmapInit: Bitmap, formatInit: Bitmap.CompressFormat) {
+            bitmap = bitmapInit
+            format = formatInit
+            isBitmap = true
+        }
+
+        constructor(imageInit: ImageProxy) {
+            image = imageInit
+        }
+
+        fun write(out: OutputStream) {
+            if (isBitmap) {
+                if (!bitmap!!.compress(format, 95, out))
+                    throw IOException("Failed to save bitmap")
+            } else {
+                val plane = image!!.planes[0]
+                val buffer: ByteBuffer = plane.buffer
+                val bytes = ByteArray(buffer.remaining())
+                buffer.get(bytes)
+                out.write(bytes)
             }
-        )
+        }
+    }
+
+    private fun takePhoto() {
+        val imageCapture = imageCapture ?: return
+
+        val name = SimpleDateFormat(FILENAME_FORMAT, Locale.US).format(System.currentTimeMillis())
+        if (fancyCapture) {
+            val contentValues = makeContentValues(name, "image/jpeg")
+            imageCapture.takePicture(
+                ContextCompat.getMainExecutor(this),
+                object : ImageCapture.OnImageCapturedCallback() {
+                    override fun onCaptureSuccess(image: ImageProxy) {
+                        val reqFormat = Bitmap.CompressFormat.JPEG
+
+                        // NOTE(davide): Apparently there is no way to tell CameraX to NOT compress
+                        // the image in JPEG
+                        val img = if (reqFormat == Bitmap.CompressFormat.JPEG)
+                            CameraImage(image)
+                        else
+                            CameraImage(imageProxyToBitmap(image), reqFormat)
+
+                        val uri = saveImage(contentResolver, contentValues, img)
+                        if (uri != null) {
+                            Toast.makeText(baseContext, "Saved photo in $uri", Toast.LENGTH_SHORT).show()
+                        }
+                        super.onCaptureSuccess(image)
+                    }
+
+                    override fun onError(exc: ImageCaptureException) {
+                        Log.e(TAG, "Photo capture failed: ${exc.message}", exc)
+                    }
+                })
+        } else {
+            val outputOptions = ImageCapture.OutputFileOptions
+                .Builder(contentResolver,
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    makeContentValues(name, "image/jpeg"))
+                .build()
+
+            imageCapture.takePicture(
+                outputOptions,
+                ContextCompat.getMainExecutor(this),
+                object : ImageCapture.OnImageSavedCallback {
+                    override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                        val msg = "Photo capture succeeded: ${output.savedUri}"
+                        Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
+                        Log.d(TAG, msg)
+                    }
+
+                    override fun onError(exc: ImageCaptureException) {
+                        Log.e(TAG, "Photo capture failed: ${exc.message}", exc)
+                    }
+                }
+            )
+        }
+    }
+
+    private fun saveImage(resolver: ContentResolver, values: ContentValues, img: CameraImage): Uri? {
+        var uri: Uri? = null
+        try {
+            uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                ?: throw IOException("Failed to create MediaStore record")
+
+            resolver.openOutputStream(uri)?.use {
+                img.write(it)
+            } ?: throw IOException("Failed to open output stream")
+
+        } catch (exc: IOException) {
+            uri?.let { orphanUri ->
+                resolver.delete(orphanUri, null, null)
+            }
+        }
+        return uri
+    }
+
+    private fun imageProxyToBitmap(image: ImageProxy): Bitmap {
+        val planeProxy = image.planes[0]
+        val buffer: ByteBuffer = planeProxy.buffer
+        val bytes = ByteArray(buffer.remaining())
+        buffer.get(bytes)
+        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
     }
 
     private fun controlVideoRecording() {
@@ -616,6 +719,8 @@ class MainActivity : AppCompatActivity() {
                 if (abs(diffX) > SWIPE_THRESHOLD && abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
                     if (diffX < 0) {
                         Log.d("Gesture", "Left swipe")
+
+                        // TODO(davide): Start gallery activity
                     } else {
                         Log.d("Gesture", "Right swipe")
 
@@ -624,6 +729,7 @@ class MainActivity : AppCompatActivity() {
                 }
             } else {
                 Log.d("Gesture", "Vertical swipe")
+                // TODO(davide): Increase/decrease exposure index?
             }
 
             return true
