@@ -66,6 +66,22 @@ class SettingActivity : AppCompatActivity() {
                     summary
                 }
             }
+
+            val prefExposure: SeekBarPreference? = findPreference("pref_exposure")
+            if (prefExposure != null) {
+                val expStateBundle = arguments?.getBundle("exposureState")
+                if (expStateBundle != null) {
+                    if (expStateBundle.getBoolean("supported")) {
+                        val exposure = exposureSettingFromBundle(expStateBundle)
+
+                        prefExposure.isEnabled = true
+                        prefExposure.min = exposure.min
+                        prefExposure.max = exposure.max
+                        prefExposure.value = exposure.index
+                        prefExposure.seekBarIncrement = exposure.step
+                    }
+                }
+            }
         }
 
         private fun lookupQualityResolutionSummary(qualityName: String?): String {

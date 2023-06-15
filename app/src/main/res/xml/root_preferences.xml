@@ -74,4 +74,13 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory app:title="Misc">
+        <SeekBarPreference
+            app:key="pref_exposure"
+            app:title="Exposure"
+            app:showSeekBarValue="true"
+            app:enabled="false" />
+
+    </PreferenceCategory>
+
 </PreferenceScreen>

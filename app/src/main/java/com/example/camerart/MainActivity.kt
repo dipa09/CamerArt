@@ -5,20 +5,14 @@ import android.annotation.SuppressLint
 import android.app.ActivityOptions
 import android.content.ContentResolver
 import android.content.ContentValues
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.media.Image
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.Environment
 import android.provider.MediaStore
-import android.provider.MediaStore.Audio.Media
-import android.transition.Explode
-import android.transition.Slide
 import android.util.Log
 import android.view.*
 import android.webkit.MimeTypeMap
@@ -29,7 +23,6 @@ import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.video.*
 import androidx.camera.video.VideoCapture
-import androidx.camera.video.internal.config.MimeInfo
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.core.content.PermissionChecker
@@ -139,6 +132,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var supportedMimes: IntArray
     private var requestedFormat: Mime = Mime.JPEG
+    private var exposureCompensationIndex: Int = 0
 
     private val activityResultLauncher =
         registerForActivityResult(
@@ -203,16 +197,13 @@ class MainActivity : AppCompatActivity() {
             return@setOnTouchListener true
         }
 
-
         cameraExecutor = Executors.newSingleThreadExecutor()
     }
 
     private fun toggleAudio() {
         audioEnabled = !audioEnabled
-        if (audioEnabled)
-            viewBinding.muteButton.background.alpha = 0xff/2
-        else
-            viewBinding.muteButton.background.alpha = 0xff
+        val alpha = if (audioEnabled) 0xff/2 else 0xff
+        viewBinding.muteButton.background.alpha = alpha
     }
 
     private fun toggleCamera() {
@@ -278,6 +269,8 @@ class MainActivity : AppCompatActivity() {
             intent.putExtra("supportedResolutions", resolutionNames)
 
             intent.putExtra("supportedImageFormats", supportedMimes)
+
+            intent.putExtra("exposureState", exposureStateToBundle(camInfo.exposureState))
         }
 
         this.startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this).toBundle())
@@ -383,6 +376,10 @@ class MainActivity : AppCompatActivity() {
                         "Lowest" -> Quality.LOWEST
                         else -> Quality.HIGHEST
                     }
+                }
+
+                "pref_exposure" -> {
+                    exposureCompensationIndex = pref.value as Int
                 }
 
             }
@@ -686,8 +683,15 @@ class MainActivity : AppCompatActivity() {
                     cameraProvider.bindToLifecycle(this, cameraSelector, preview, videoCapture)
                 else
                     cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
+
                 currCamInfo = camera.cameraInfo
                 currCamControl = camera.cameraControl
+
+                // NOTE(davide): Apply settings requiring a CameraControl instance
+                Log.d("Exposure", "index is $exposureCompensationIndex")
+                if (camera.cameraInfo.exposureState.exposureCompensationIndex != exposureCompensationIndex) {
+                    camera.cameraControl.setExposureCompensationIndex(exposureCompensationIndex)
+                }
             } catch(exc: Exception) {
                 Log.e(TAG, "Use case binding failed", exc)
             }
