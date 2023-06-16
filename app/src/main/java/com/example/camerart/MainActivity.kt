@@ -414,55 +414,6 @@ class MainActivity : AppCompatActivity() {
         return values
     }
 
-    // NOTE(davide): Apparently this language does not have unions
-    private class CameraImage {
-        var isBitmap: Boolean = false
-
-        var image: ImageProxy? = null
-
-        // Accessible and never null when isBitmap is true
-        var bitmap: Bitmap? = null
-        var format: Bitmap.CompressFormat = Bitmap.CompressFormat.JPEG
-
-        constructor(bitmapInit: Bitmap, formatInit: Bitmap.CompressFormat) {
-            bitmap = bitmapInit
-            format = formatInit
-            isBitmap = true
-        }
-
-        constructor(imageInit: ImageProxy) {
-            image = imageInit
-        }
-
-        fun write(out: OutputStream) {
-            if (isBitmap) {
-                if (!bitmap!!.compress(format, 95, out))
-                    throw IOException("Failed to save bitmap")
-            } else {
-                val plane = image!!.planes[0]
-                val buffer: ByteBuffer = plane.buffer
-                val bytes = ByteArray(buffer.remaining())
-                buffer.get(bytes)
-                out.write(bytes)
-            }
-        }
-    }
-
-    fun getBitmapFormat(fmt: Mime): Bitmap.CompressFormat {
-        return when (fmt) {
-            Mime.JPEG -> Bitmap.CompressFormat.JPEG
-            Mime.PNG -> Bitmap.CompressFormat.PNG
-            Mime.WEBP -> {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    Bitmap.CompressFormat.WEBP_LOSSY
-                } else {
-                    throw IllegalArgumentException("Invalid image format")
-                }
-            }
-            else -> throw IllegalArgumentException("Invalid image format")
-        }
-    }
-
     // TODO(davide): Add more metadata. Location, producer, ...
     private fun takePhoto() {
         val imageCapture = imageCapture ?: return
@@ -477,12 +428,7 @@ class MainActivity : AppCompatActivity() {
                     override fun onCaptureSuccess(image: ImageProxy) {
                         // NOTE(davide): Apparently there is no way to tell CameraX to NOT compress
                         // the image in JPEG
-                        val img = if (requestedFormat == Mime.JPEG) {
-                            CameraImage(image)
-                        } else {
-                            CameraImage(imageProxyToBitmap(image), getBitmapFormat(requestedFormat))
-                        }
-
+                        val img = Image(image, requestedFormat)
                         val uri = saveImage(contentResolver, contentValues, img)
                         if (uri != null) {
                             Toast.makeText(baseContext, "Saved photo in $uri", Toast.LENGTH_SHORT).show()
@@ -519,7 +465,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun saveImage(resolver: ContentResolver, values: ContentValues, img: CameraImage): Uri? {
+    private fun saveImage(resolver: ContentResolver, values: ContentValues, img: Image): Uri? {
         var uri: Uri? = null
         try {
             uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
@@ -535,14 +481,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
         return uri
-    }
-
-    private fun imageProxyToBitmap(image: ImageProxy): Bitmap {
-        val planeProxy = image.planes[0]
-        val buffer: ByteBuffer = planeProxy.buffer
-        val bytes = ByteArray(buffer.remaining())
-        buffer.get(bytes)
-        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
     }
 
     private fun controlVideoRecording() {

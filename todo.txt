@@ -1,6 +1,14 @@
-- Camera Configuration
+- Configuration
   - Detect devices capable of Preview + Vide + Photo use case
   - Ensure that front and back cameras are available
+  - Using multiple cameras at the same time?
+    Is it possible to split the preview view in half and show front and back camera previews
+    at the same time?
+    https://developer.android.com/training/camerax/configuration#select-multiple-cameras-concurrently
+  - Set resolution
+    https://developer.android.com/training/camerax/configuration#specify-resolution
+  - Cancel metering
+    https://developer.android.com/reference/androidx/camera/core/CameraControl#cancelFocusAndMetering()
 
 - Image Capture
   - setResolutionSelector
@@ -9,6 +17,8 @@
 
 - Video Capture
   - Timed recording
+
+- Extensions
 
 - Gestures
   - Start photo/video on click/long-click/something else?
@@ -28,9 +38,4 @@
     - Info about gestures
     - Info about the app
 
-- Using multiple cameras at the same time?
-  Is it possible to split the preview view in half and show front and back camera previews
-  at the same time?
-
 - Something that uses ImageAnalysis
-- Something that uses the Advance API
