@@ -12,6 +12,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.CountDownTimer
 import android.provider.MediaStore
 import android.util.Log
 import android.view.*
@@ -122,6 +123,7 @@ class MainActivity : AppCompatActivity() {
     private var audioEnabled: Boolean = true
     private var videoQuality: Quality = Quality.HIGHEST
     private var playing: Boolean = false
+    private var videoDuration: Int = 0
 
     // Preview
     private var scaleType: PreviewView.ScaleType = PreviewView.ScaleType.FIT_CENTER
@@ -133,6 +135,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var supportedMimes: IntArray
     private var requestedFormat: Mime = Mime.JPEG
     private var exposureCompensationIndex: Int = 0
+    private var delayBeforeAction_s: Int = 0
 
     private val activityResultLauncher =
         registerForActivityResult(
@@ -378,8 +381,20 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
+                "pref_video_duration" -> {
+                    videoDuration = try {
+                        (pref.value as String).toInt()
+                    } catch (exc: NumberFormatException) {
+                        0
+                    }
+                }
+
                 "pref_exposure" -> {
                     exposureCompensationIndex = pref.value as Int
+                }
+
+                "pref_countdown" -> {
+                    delayBeforeAction_s = pref.value as Int
                 }
 
             }
@@ -446,6 +461,8 @@ class MainActivity : AppCompatActivity() {
                     MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                     makeContentValues(name, "image/jpeg"))
                 .build()
+
+            countdown(delayBeforeAction_s)
 
             imageCapture.takePicture(
                 outputOptions,
@@ -538,6 +555,7 @@ class MainActivity : AppCompatActivity() {
                 {
                     if (audioEnabled)
                         withAudioEnabled()
+                    countdown(delayBeforeAction_s)
                 }
             }
             .start(ContextCompat.getMainExecutor(this)) { recordEvent ->
@@ -643,6 +661,23 @@ class MainActivity : AppCompatActivity() {
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
         ContextCompat.checkSelfPermission(baseContext, it) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun countdown(seconds: Int) {
+        if (seconds > 0) {
+            viewBinding.zoomRatioText.text = "$seconds"
+            viewBinding.zoomRatioText.visibility = View.VISIBLE
+
+            object : CountDownTimer(delayBeforeAction_s.toLong() * 1000, 1000) {
+                override fun onTick(reamaining_ms: Long) {
+                    viewBinding.zoomRatioText.text = "${reamaining_ms / 1000}"
+                }
+
+                override fun onFinish() {
+                    viewBinding.zoomRatioText.visibility = View.INVISIBLE
+                }
+            }.start()
+        }
     }
 
     private val scaleListener = object : ScaleGestureDetector.SimpleOnScaleGestureListener() {

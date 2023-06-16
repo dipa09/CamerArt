@@ -61,6 +61,14 @@
             app:entryValues="@array/empty"
             app:useSimpleSummaryProvider="false" />
 
+        <EditTextPreference
+            app:key="pref_video_duration"
+            app:title="Duration"
+            app:summary="Limit video recording duration"
+            android:inputType="numberDecimal"
+            android:digits="0123456789"
+            />
+
     </PreferenceCategory>
 
     <PreferenceCategory app:title="Preview">
@@ -75,6 +83,16 @@
     </PreferenceCategory>
 
     <PreferenceCategory app:title="Misc">
+        <SeekBarPreference
+            app:key="pref_countdown"
+            app:title="Countdown"
+            app:showSeekBarValue="true"
+            app:defaultValue="0"
+            app:min="0"
+            android:max="60"
+            app:seekBarIncrement="1"
+            app:summary="Wait a bit before taking the photo/video" />
+
         <SeekBarPreference
             app:key="pref_exposure"
             app:title="Exposure"

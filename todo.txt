@@ -13,10 +13,9 @@
 - Image Capture
   - setResolutionSelector
   - Zero lag mode for devices that support it
-  - Take photo after delay?
 
-- Video Capture
-  - Timed recording
+
+- Timed recording
 
 - Extensions
 
