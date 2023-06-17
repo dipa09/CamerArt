@@ -15,6 +15,9 @@
   - Zero lag mode for devices that support it
   - Auto focus when the user try to keep the phone still
 
+- Video
+  - Mirror mode?
+
 - Extensions
 
 - Gestures
@@ -24,6 +27,7 @@
 - Setting Fragment
   - Set output folder for saving photos and videos?
   - Use user locale for file names
+  - Search bar
 
 - Camera UI
   - Use a single button for photo and video

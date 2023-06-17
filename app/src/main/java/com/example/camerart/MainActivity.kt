@@ -119,6 +119,7 @@ class MainActivity : AppCompatActivity() {
     private var videoQuality: Quality = Quality.HIGHEST
     private var playing: Boolean = false
     private var videoDuration: Int = 0
+    private var showVideoStats: Boolean = false
 
     // Preview
     private var scaleType: PreviewView.ScaleType = PreviewView.ScaleType.FIT_CENTER
@@ -169,6 +170,7 @@ class MainActivity : AppCompatActivity() {
 
         viewBinding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(viewBinding.root)
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         commonDetector = GestureDetectorCompat(viewBinding.viewFinder.context, commonListener)
         scaleDetector = ScaleGestureDetector(viewBinding.viewFinder.context, scaleListener)
 
@@ -395,6 +397,10 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
+                "pref_show_video_stats" -> {
+                    showVideoStats = (pref.value as Boolean)
+                }
+
                 "pref_exposure" -> {
                     exposureCompensationIndex = pref.value as Int
                 }
@@ -528,6 +534,10 @@ class MainActivity : AppCompatActivity() {
             recording = null
             viewBinding.playButton.visibility = View.INVISIBLE
             viewBinding.muteButton.visibility = View.VISIBLE
+            viewBinding.statsText.apply {
+                text = ""
+                visibility = View.INVISIBLE
+            }
             playing = false
 
             stopped = true
@@ -542,6 +552,9 @@ class MainActivity : AppCompatActivity() {
         viewBinding.videoCaptureButton.isEnabled = false
         if (stopRecording())
             return
+
+        // NOTE(davide): The docs say that Recording.mute can be used to mute/unmute a running
+        // recording, but the method can't be resolved...
         viewBinding.muteButton.visibility = View.INVISIBLE
 
         // create and start a new recording session
@@ -569,9 +582,10 @@ class MainActivity : AppCompatActivity() {
                 {
                     if (audioEnabled)
                         withAudioEnabled()
-                    if (videoDuration > 0) {
+                    if (videoDuration > 0)
                         recDurationNanos = videoDuration.toLong()*1_000_000_000
-                    }
+                    if (showVideoStats)
+                        viewBinding.statsText.visibility = View.VISIBLE
                     countdown(delayBeforeActionSeconds)
                 }
             }
@@ -601,7 +615,23 @@ class MainActivity : AppCompatActivity() {
                     }
 
                     is VideoRecordEvent.Status -> {
-                        if (recordEvent.recordingStats.recordedDurationNanos >= recDurationNanos) {
+                        // TODO(davide): Display Location info as well?
+                        val stats = recordEvent.recordingStats
+                        if (stats.recordedDurationNanos < recDurationNanos) {
+                            if (showVideoStats) {
+                                val audioDesc = when (stats.audioStats.audioState) {
+                                    AudioStats.AUDIO_STATE_ACTIVE -> "On"
+                                    AudioStats.AUDIO_STATE_DISABLED -> "Off"
+                                    AudioStats.AUDIO_STATE_SOURCE_SILENCED -> "Silenced"
+                                    else -> "Bad"
+                                }
+
+                                viewBinding.statsText.text =
+                                    "Time: ${humanizeTime(stats.recordedDurationNanos)}\n" +
+                                            "Size: ${humanizeSize(stats.numBytesRecorded)}\n" +
+                                            "Audio: $audioDesc"
+                            }
+                        } else {
                             stopRecording()
                         }
                     }

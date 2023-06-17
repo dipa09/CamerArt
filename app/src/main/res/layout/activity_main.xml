@@ -77,4 +77,16 @@
         android:textStyle="bold"
         android:textSize="30sp" />
 
+    <TextView
+        android:id="@+id/stats_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_toEndOf="@id/mute_button"
+        android:maxLines="3"
+        android:minLines="3"
+        android:visibility="invisible"
+        android:textColor="@color/white"
+        />
+
 </RelativeLayout>

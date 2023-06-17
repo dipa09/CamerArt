@@ -86,6 +86,8 @@ class SettingActivity : AppCompatActivity() {
 
             // NOTE(davide): Validate user input. There is a XML attribute that should do that, but
             // it didn't work...
+            // TODO(davide): Is there a way to disable the OK button in the dialog box on invalid
+            // inputs? Currently we just discard them
             val prefVideoDuration: EditTextPreference? = findPreference("pref_video_duration")
             if (prefVideoDuration != null) {
                 prefVideoDuration.setOnPreferenceChangeListener { _, newValue ->

@@ -66,6 +66,12 @@
             app:title="Duration"
             app:summary="Limit video recording duration" />
 
+        <SwitchPreferenceCompat
+            app:key="pref_show_video_stats"
+            app:title="Show Stats"
+            app:summary="Display recording stats on screen"
+            app:defaultValue="false" />
+
     </PreferenceCategory>
 
     <PreferenceCategory app:title="Preview">
