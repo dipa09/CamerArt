@@ -2,6 +2,7 @@ package com.example.camerart
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
@@ -80,6 +81,25 @@ class SettingActivity : AppCompatActivity() {
                         prefExposure.value = exposure.index
                         prefExposure.seekBarIncrement = exposure.step
                     }
+                }
+            }
+
+            // NOTE(davide): Validate user input. There is a XML attribute that should do that, but
+            // it didn't work...
+            val prefVideoDuration: EditTextPreference? = findPreference("pref_video_duration")
+            if (prefVideoDuration != null) {
+                prefVideoDuration.setOnPreferenceChangeListener { _, newValue ->
+                    var valid = false
+                    val duration = newValue as String
+                    val iter = duration.iterator()
+                    for (ch in iter) {
+                        valid = (ch.isDigit() ||
+                                (iter.hasNext() &&
+                                        (ch.lowercaseChar() == 's' || ch.lowercaseChar() == 'm' || ch.lowercaseChar() == 'h')))
+                        if (!valid)
+                            break
+                    }
+                    valid
                 }
             }
         }

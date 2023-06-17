@@ -35,8 +35,7 @@
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
         android:layout_toRightOf="@id/camera_button"
-        android:src="@android:drawable/ic_btn_speak_now"
-        />
+        android:src="@android:drawable/ic_btn_speak_now" />
 
     <Button
         android:id="@+id/image_capture_button"
@@ -45,8 +44,7 @@
         android:layout_marginBottom="20dp"
         android:layout_alignParentBottom="true"
         android:elevation="2dp"
-        android:text="@string/take_photo"
-        />
+        android:text="@string/take_photo" />
 
     <Button
         android:id="@+id/video_capture_button"
@@ -57,8 +55,7 @@
         android:layout_marginLeft="20dp"
         android:layout_toEndOf="@id/image_capture_button"
         android:elevation="2dp"
-        android:text="@string/start_capture"
-        />
+        android:text="@string/start_capture" />
 
     <ImageButton
         android:id="@+id/play_button"
@@ -70,15 +67,14 @@
         android:visibility="invisible"  />
 
     <TextView
-        android:id="@+id/zoom_ratio_text"
+        android:id="@+id/info_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_centerInParent="true"
         android:visibility="invisible"
-        android:text="nnn"
+        android:text=""
         android:textColor="@color/white"
         android:textStyle="bold"
-        android:textSize="30sp"
-        />
+        android:textSize="30sp" />
 
 </RelativeLayout>

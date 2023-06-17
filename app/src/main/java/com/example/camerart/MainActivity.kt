@@ -7,8 +7,6 @@ import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -31,14 +29,11 @@ import androidx.core.view.GestureDetectorCompat
 import androidx.preference.PreferenceManager
 import com.example.camerart.databinding.ActivityMainBinding
 import java.io.IOException
-import java.io.OutputStream
-import java.nio.ByteBuffer
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
-import kotlin.collections.ArrayList
 import kotlin.math.abs
 
 typealias LumaListener = (luma: Double) -> Unit
@@ -135,7 +130,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var supportedMimes: IntArray
     private var requestedFormat: Mime = Mime.JPEG
     private var exposureCompensationIndex: Int = 0
-    private var delayBeforeAction_s: Int = 0
+    private var delayBeforeActionSeconds: Int = 0
 
     private val activityResultLauncher =
         registerForActivityResult(
@@ -382,8 +377,19 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 "pref_video_duration" -> {
+                    var duration = pref.value as String
+                    var factor = 1
+                    if (!duration.last().isDigit()) {
+                        factor = when (duration.last().lowercaseChar()) {
+                            'm' -> 60
+                            'h' -> 60*60
+                            else -> 1
+                        }
+                        duration = duration.substring(0, duration.length - 1)
+                    }
+
                     videoDuration = try {
-                        (pref.value as String).toInt()
+                        duration.toInt()*factor
                     } catch (exc: NumberFormatException) {
                         0
                     }
@@ -394,7 +400,7 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 "pref_countdown" -> {
-                    delayBeforeAction_s = pref.value as Int
+                    delayBeforeActionSeconds = pref.value as Int
                 }
 
             }
@@ -462,7 +468,7 @@ class MainActivity : AppCompatActivity() {
                     makeContentValues(name, "image/jpeg"))
                 .build()
 
-            countdown(delayBeforeAction_s)
+            countdown(delayBeforeActionSeconds)
 
             imageCapture.takePicture(
                 outputOptions,
@@ -514,22 +520,28 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun captureVideo() {
-        val videoCapture = this.videoCapture ?: return
-
-        viewBinding.videoCaptureButton.isEnabled = false
-
-        val curRecording = recording
-        if (curRecording != null) {
-            // Stop the current recording session.
-            curRecording.stop()
+    private fun stopRecording(): Boolean {
+        var stopped = false
+        val rec = recording
+        if (rec != null) {
+            rec.stop()
             recording = null
             viewBinding.playButton.visibility = View.INVISIBLE
             viewBinding.muteButton.visibility = View.VISIBLE
             playing = false
-            return
+
+            stopped = true
         }
 
+        return stopped
+    }
+
+    private fun captureVideo() {
+        val videoCapture = this.videoCapture ?: return
+
+        viewBinding.videoCaptureButton.isEnabled = false
+        if (stopRecording())
+            return
         viewBinding.muteButton.visibility = View.INVISIBLE
 
         // create and start a new recording session
@@ -541,6 +553,8 @@ class MainActivity : AppCompatActivity() {
                 put(MediaStore.Video.Media.RELATIVE_PATH, "Movies/CameraX-Video")
             }
         }
+
+        var recDurationNanos = Long.MAX_VALUE
 
         val mediaStoreOutputOptions = MediaStoreOutputOptions
             .Builder(contentResolver, MediaStore.Video.Media.EXTERNAL_CONTENT_URI)
@@ -555,7 +569,10 @@ class MainActivity : AppCompatActivity() {
                 {
                     if (audioEnabled)
                         withAudioEnabled()
-                    countdown(delayBeforeAction_s)
+                    if (videoDuration > 0) {
+                        recDurationNanos = videoDuration.toLong()*1_000_000_000
+                    }
+                    countdown(delayBeforeActionSeconds)
                 }
             }
             .start(ContextCompat.getMainExecutor(this)) { recordEvent ->
@@ -566,6 +583,7 @@ class MainActivity : AppCompatActivity() {
                             isEnabled = true
                         }
                     }
+
                     is VideoRecordEvent.Finalize -> {
                         if (!recordEvent.hasError()) {
                             val msg = "Video capture succeeded: " + "${recordEvent.outputResults.outputUri}"
@@ -579,6 +597,12 @@ class MainActivity : AppCompatActivity() {
                         viewBinding.videoCaptureButton.apply {
                             text = getString(R.string.start_capture)
                             isEnabled = true
+                        }
+                    }
+
+                    is VideoRecordEvent.Status -> {
+                        if (recordEvent.recordingStats.recordedDurationNanos >= recDurationNanos) {
+                            stopRecording()
                         }
                     }
                 }
@@ -644,7 +668,6 @@ class MainActivity : AppCompatActivity() {
                 currCamControl = camera.cameraControl
 
                 // NOTE(davide): Apply settings requiring a CameraControl instance
-                Log.d("Exposure", "index is $exposureCompensationIndex")
                 if (camera.cameraInfo.exposureState.exposureCompensationIndex != exposureCompensationIndex) {
                     camera.cameraControl.setExposureCompensationIndex(exposureCompensationIndex)
                 }
@@ -665,16 +688,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun countdown(seconds: Int) {
         if (seconds > 0) {
-            viewBinding.zoomRatioText.text = "$seconds"
-            viewBinding.zoomRatioText.visibility = View.VISIBLE
+            viewBinding.infoText.text = "$seconds"
+            viewBinding.infoText.visibility = View.VISIBLE
 
-            object : CountDownTimer(delayBeforeAction_s.toLong() * 1000, 1000) {
+            object : CountDownTimer(delayBeforeActionSeconds.toLong()*1000, 1000) {
                 override fun onTick(reamaining_ms: Long) {
-                    viewBinding.zoomRatioText.text = "${reamaining_ms / 1000}"
+                    viewBinding.infoText.text = "${reamaining_ms / 1000}"
                 }
 
                 override fun onFinish() {
-                    viewBinding.zoomRatioText.visibility = View.INVISIBLE
+                    viewBinding.infoText.visibility = View.INVISIBLE
                 }
             }.start()
         }
@@ -687,7 +710,7 @@ class MainActivity : AppCompatActivity() {
             if (camControl != null && state != null) {
                 val zoomRatio = state.zoomRatio*detector.scaleFactor
                 if (zoomRatio >= state.minZoomRatio && zoomRatio <= state.maxZoomRatio) {
-                    viewBinding.zoomRatioText.text = "${Math.round(state.linearZoom*100)}%"
+                    viewBinding.infoText.text = "${Math.round(state.linearZoom*100)}%"
                     camControl.setZoomRatio(zoomRatio)
                 }
             }
@@ -696,13 +719,13 @@ class MainActivity : AppCompatActivity() {
 
         override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
             scaling = true
-            viewBinding.zoomRatioText.visibility = View.VISIBLE
+            viewBinding.infoText.visibility = View.VISIBLE
             return super.onScaleBegin(detector)
         }
 
         override fun onScaleEnd(detector: ScaleGestureDetector) {
             scaling = false
-            viewBinding.zoomRatioText.visibility = View.INVISIBLE
+            viewBinding.infoText.visibility = View.INVISIBLE
             super.onScaleEnd(detector)
         }
     }
@@ -727,8 +750,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         override fun onDoubleTap(e: MotionEvent): Boolean {
-            //Log.d("Gesture", "Double tap")
-
             val camControl = currCamControl
             val camInfo = currCamInfo
             if (flashMode != ImageCapture.FLASH_MODE_OFF && camControl != null && camInfo != null) {

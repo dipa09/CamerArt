@@ -13,9 +13,7 @@
 - Image Capture
   - setResolutionSelector
   - Zero lag mode for devices that support it
-
-
-- Timed recording
+  - Auto focus when the user try to keep the phone still
 
 - Extensions
 

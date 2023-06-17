@@ -64,10 +64,7 @@
         <EditTextPreference
             app:key="pref_video_duration"
             app:title="Duration"
-            app:summary="Limit video recording duration"
-            android:inputType="numberDecimal"
-            android:digits="0123456789"
-            />
+            app:summary="Limit video recording duration" />
 
     </PreferenceCategory>
 
