@@ -86,7 +86,15 @@
         android:maxLines="3"
         android:minLines="3"
         android:visibility="invisible"
-        android:textColor="@color/white"
+        android:textColor="@color/white" />
+    
+    <View
+        android:id="@+id/focus_ring"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:background="@drawable/shape_ring"
+        android:layout_centerInParent="true"
+        android:visibility="invisible"
         />
-
+    
 </RelativeLayout>

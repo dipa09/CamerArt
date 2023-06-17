@@ -7,6 +7,7 @@ import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -35,8 +36,6 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
-
-typealias LumaListener = (luma: Double) -> Unit
 
 class MainActivity : AppCompatActivity() {
     companion object {
@@ -770,11 +769,21 @@ class MainActivity : AppCompatActivity() {
                 val p1 = pointFactory.createPoint(e.x, e.y)
                 //val p2 = pointFactory.createPoint(e.x)
                 val action = FocusMeteringAction.Builder(p1)
-                    .setAutoCancelDuration(2, TimeUnit.SECONDS)
+                    .setAutoCancelDuration(3, TimeUnit.SECONDS)
                     .build()
 
-                // TODO(davide): Draw a circle to let the user know
-                camControl.startFocusAndMetering(action)
+                viewBinding.focusRing.apply {
+                    x = e.x - width / 2
+                    y = e.y - height / 2
+                    visibility = View.VISIBLE
+                }
+
+                val result = camControl.startFocusAndMetering(action)
+                result.addListener({
+                    if (!result.get().isFocusSuccessful)
+                        Toast.makeText(baseContext, "Unable to focus", Toast.LENGTH_SHORT).show()
+                    viewBinding.focusRing.visibility = View.INVISIBLE
+                }, ContextCompat.getMainExecutor(baseContext))
             }
             return true
         }

@@ -9,6 +9,8 @@
     https://developer.android.com/training/camerax/configuration#specify-resolution
   - Cancel metering
     https://developer.android.com/reference/androidx/camera/core/CameraControl#cancelFocusAndMetering()
+  - Metering modes
+    https://developer.android.com/training/camerax/configuration#focus-and-metering
 
 - Image Capture
   - setResolutionSelector
@@ -17,6 +19,7 @@
 
 - Video
   - Mirror mode?
+    https://developer.android.com/reference/androidx/camera/video/VideoCapture.Builder#setMirrorMode(int)
 
 - Extensions
 
@@ -27,7 +30,7 @@
 - Setting Fragment
   - Set output folder for saving photos and videos?
   - Use user locale for file names
-  - Search bar
+  - Search bar?
 
 - Camera UI
   - Use a single button for photo and video
