@@ -7,7 +7,6 @@ import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -84,9 +83,7 @@ class MainActivity : AppCompatActivity() {
 
         COUNT("");
 
-        override fun toString(): String {
-            return mime
-        }
+        override fun toString(): String { return mime }
     }
 
     private lateinit var viewBinding: ActivityMainBinding
@@ -112,6 +109,7 @@ class MainActivity : AppCompatActivity() {
     private var jpegQuality: Int = JPEG_QUALITY_UNINITIALIZED
     private var targetRotation: Int = TARGET_ROTATION_UNINITIALIZED
     private var fancyCapture: Boolean = false
+    private var focusing: Boolean = false
 
     // Video
     private var audioEnabled: Boolean = true
@@ -154,9 +152,20 @@ class MainActivity : AppCompatActivity() {
         cameraExecutor.shutdown()
     }
 
+    override fun onResume() {
+        super.onResume()
+
+        if (loadPreferences()) {
+            Log.d(TAG, "RESTART CAMERA")
+            startCamera()
+        }
+        Log.d(TAG, "ON RESUME ENDED")
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.d(TAG, "ON CREATE START")
 
         /*
         // NOTE(davide): This must come before setContentView
@@ -197,6 +206,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         cameraExecutor = Executors.newSingleThreadExecutor()
+        Log.d(TAG, "ON CREATE END")
     }
 
     private fun toggleAudio() {
@@ -294,24 +304,22 @@ class MainActivity : AppCompatActivity() {
     // a previous preference from root_preferences.xml or arrays.xml, otherwise you get
     // a random exception.
     private fun loadPreferences(): Boolean {
-        // TODO(davide): Set this
-        var restartCamera = true
+        var restartCamera = false
 
         val sharedPreference = PreferenceManager.getDefaultSharedPreferences(this)
-
         var newCaptureMode: Int = captureMode
-
-        val prefs = sharedPreference.all
-        for (pref in prefs.iterator()) {
+        for (pref in sharedPreference.all.iterator()) {
             //Log.i(TAG, "preference ${pref.key}, ${pref.value}")
 
             when (pref.key) {
                 "pref_flash" -> {
-                    flashMode = when(pref.value) {
+                    val newFlashMode = when(pref.value) {
                         "on" -> ImageCapture.FLASH_MODE_ON
                         "off" -> ImageCapture.FLASH_MODE_OFF
                         else -> ImageCapture.FLASH_MODE_AUTO
                     }
+                    restartCamera = (newFlashMode != flashMode)
+                    flashMode = newFlashMode
                 }
 
                 "pref_capture" -> {
@@ -323,6 +331,7 @@ class MainActivity : AppCompatActivity() {
                         //"zero" -> ImageCapture.CAPTURE_MODE_ZERO_SHUTTER_LAG
                         else -> ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
                     }
+                    restartCamera = (newCaptureMode != captureMode)
                 }
 
                 "pref_image_format" -> {
@@ -334,40 +343,46 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 "pref_jpeg_quality" -> {
-                    jpegQuality = pref.value as Int
+                    val newJpegQuality = pref.value as Int
+                    restartCamera = (newJpegQuality != jpegQuality)
+                    jpegQuality = newJpegQuality
                 }
 
                 "pref_rotation" -> {
-                    when (pref.value) {
-                        "0" -> targetRotation = Surface.ROTATION_0
-                        "90" -> targetRotation = Surface.ROTATION_90
-                        "180" -> targetRotation = Surface.ROTATION_180
-                        "270" -> targetRotation = Surface.ROTATION_270
+                    val newTargetRotation = when (pref.value) {
+                        "0" -> Surface.ROTATION_0
+                        "90" -> Surface.ROTATION_90
+                        "180" -> Surface.ROTATION_180
+                        "270" -> Surface.ROTATION_270
+                        else -> TARGET_ROTATION_UNINITIALIZED
                     }
-                }
-
-                "pref_photo_on_click" -> {
-                    photoOnClickEnabled = pref.value as Boolean
+                    restartCamera = (newTargetRotation != targetRotation)
+                    targetRotation = newTargetRotation
                 }
 
                 "pref_scale" -> {
-                    when (pref.value) {
-                        "center" -> scaleType = PreviewView.ScaleType.FIT_CENTER
-                        "start" -> scaleType = PreviewView.ScaleType.FIT_START
-                        "end" -> scaleType = PreviewView.ScaleType.FIT_END
+                    val newScaleType = when (pref.value) {
+                        "center" -> PreviewView.ScaleType.FIT_CENTER
+                        "start" -> PreviewView.ScaleType.FIT_START
+                        "end" -> PreviewView.ScaleType.FIT_END
+                        else -> scaleType
                     }
+                    restartCamera = (newScaleType != scaleType)
+                    scaleType = newScaleType
                 }
 
                 // TODO(davide): Temporary. The user shouldn't be aware of this
                 "pref_use_video_temp" -> {
-                    currUseCase = if (pref.value as Boolean)
+                    val newUseCase = if (pref.value as Boolean)
                         CameraUseCase.PREVIEW_VIDEO
                     else
                         CameraUseCase.PREVIEW_CAPTURE
+                    restartCamera = (newUseCase != currUseCase)
+                    currUseCase = newUseCase
                 }
 
                 "pref_video_quality" -> {
-                    videoQuality = when (pref.value) {
+                    val newVideoQuality = when (pref.value) {
                         "SD" -> Quality.SD
                         "HD" -> Quality.HD
                         "FHD" -> Quality.FHD
@@ -375,6 +390,8 @@ class MainActivity : AppCompatActivity() {
                         "Lowest" -> Quality.LOWEST
                         else -> Quality.HIGHEST
                     }
+                    restartCamera = (newVideoQuality != videoQuality)
+                    videoQuality = newVideoQuality
                 }
 
                 "pref_video_duration" -> {
@@ -414,30 +431,17 @@ class MainActivity : AppCompatActivity() {
         // NOTE(davide): Change JPEG quality unless the user changed the capture mode
         if (newCaptureMode != captureMode) {
             jpegQuality = JPEG_QUALITY_UNINITIALIZED
+            captureMode = newCaptureMode
+            restartCamera = true
         }
 
         return restartCamera
     }
 
-    override fun onResume() {
-        super.onResume()
-
-        if (loadPreferences())
-            startCamera()
-        Log.i(TAG, "ON RESUME ENDED")
-    }
-
-    private fun makeContentValues(displayName: String, mimeType: String): ContentValues {
-        val values = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
-            put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
-            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
-                //put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
-                put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/CameraX-Image")
-            }
+    private fun applySettingsToCurrentCamera(camInfo: CameraInfo, camControl: CameraControl) {
+        if (camInfo.exposureState.exposureCompensationIndex != exposureCompensationIndex) {
+            camControl.setExposureCompensationIndex(exposureCompensationIndex)
         }
-
-        return values
     }
 
     // TODO(davide): Add more metadata. Location, producer, ...
@@ -643,7 +647,7 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("WrongConstant")
     private fun startCamera() {
-        Log.i(TAG, "START CAMERA")
+        Log.d(TAG, "START CAMERA")
 
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
         cameraProviderFuture.addListener({
@@ -696,10 +700,7 @@ class MainActivity : AppCompatActivity() {
                 currCamInfo = camera.cameraInfo
                 currCamControl = camera.cameraControl
 
-                // NOTE(davide): Apply settings requiring a CameraControl instance
-                if (camera.cameraInfo.exposureState.exposureCompensationIndex != exposureCompensationIndex) {
-                    camera.cameraControl.setExposureCompensationIndex(exposureCompensationIndex)
-                }
+                applySettingsToCurrentCamera(camera.cameraInfo, camera.cameraControl)
             } catch(exc: Exception) {
                 Log.e(TAG, "Use case binding failed", exc)
             }
@@ -759,32 +760,38 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private val commonListener = object : GestureDetector.SimpleOnGestureListener() {
-        override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
-            //Log.d("Gesture", "Single tap $e")
-
+    fun focus(posX: Float, posY: Float) {
+        if (!focusing) {
             val camControl = currCamControl
             if (camControl != null) {
                 val pointFactory = viewBinding.viewFinder.meteringPointFactory
-                val p1 = pointFactory.createPoint(e.x, e.y)
+                val p1 = pointFactory.createPoint(posX, posY)
                 //val p2 = pointFactory.createPoint(e.x)
                 val action = FocusMeteringAction.Builder(p1)
                     .setAutoCancelDuration(3, TimeUnit.SECONDS)
                     .build()
 
                 viewBinding.focusRing.apply {
-                    x = e.x - width / 2
-                    y = e.y - height / 2
+                    x = posX - width / 2
+                    y = posY - height / 2
                     visibility = View.VISIBLE
                 }
 
+                focusing = true
                 val result = camControl.startFocusAndMetering(action)
                 result.addListener({
-                    if (!result.get().isFocusSuccessful)
-                        Toast.makeText(baseContext, "Unable to focus", Toast.LENGTH_SHORT).show()
+                    //if (!result.get().isFocusSuccessful)
+                    //    Toast.makeText(baseContext, "Unable to focus", Toast.LENGTH_SHORT).show()
                     viewBinding.focusRing.visibility = View.INVISIBLE
+                    focusing = false
                 }, ContextCompat.getMainExecutor(baseContext))
             }
+        }
+    }
+
+    private val commonListener = object : GestureDetector.SimpleOnGestureListener() {
+        override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+            focus(e.x, e.y)
             return true
         }
 

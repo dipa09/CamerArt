@@ -15,7 +15,6 @@
 - Image Capture
   - setResolutionSelector
   - Zero lag mode for devices that support it
-  - Auto focus when the user try to keep the phone still
 
 - Video
   - Mirror mode?
@@ -24,7 +23,6 @@
 - Extensions
 
 - Gestures
-  - Start photo/video on click/long-click/something else?
   - Animate transitions?
 
 - Setting Fragment
