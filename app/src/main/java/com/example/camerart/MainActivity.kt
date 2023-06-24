@@ -19,6 +19,8 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.*
+import androidx.camera.extensions.ExtensionMode
+import androidx.camera.extensions.ExtensionsManager
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.video.*
 import androidx.camera.video.VideoCapture
@@ -108,8 +110,8 @@ class MainActivity : AppCompatActivity() {
     private var flashMode: Int = ImageCapture.FLASH_MODE_AUTO
     private var jpegQuality: Int = JPEG_QUALITY_UNINITIALIZED
     private var targetRotation: Int = TARGET_ROTATION_UNINITIALIZED
-    private var fancyCapture: Boolean = false
     private var focusing: Boolean = false
+    private var extensionMode: Int = ExtensionMode.NONE
 
     // Video
     private var audioEnabled: Boolean = true
@@ -121,11 +123,7 @@ class MainActivity : AppCompatActivity() {
     // Preview
     private var scaleType: PreviewView.ScaleType = PreviewView.ScaleType.FIT_CENTER
 
-    // Behavioral
-    private var photoOnClickEnabled: Boolean = false
-    //
-
-    private lateinit var supportedMimes: IntArray
+    private var supportedMimes = IntArray(1){Mime.JPEG.ordinal}
     private var requestedFormat: Mime = Mime.JPEG
     private var exposureCompensationIndex: Int = 0
     private var delayBeforeActionSeconds: Int = 0
@@ -304,7 +302,7 @@ class MainActivity : AppCompatActivity() {
     // a previous preference from root_preferences.xml or arrays.xml, otherwise you get
     // a random exception.
     private fun loadPreferences(): Boolean {
-        var restartCamera = false
+        var changeCount = 0
 
         val sharedPreference = PreferenceManager.getDefaultSharedPreferences(this)
         var newCaptureMode: Int = captureMode
@@ -318,8 +316,11 @@ class MainActivity : AppCompatActivity() {
                         "off" -> ImageCapture.FLASH_MODE_OFF
                         else -> ImageCapture.FLASH_MODE_AUTO
                     }
-                    restartCamera = (newFlashMode != flashMode)
-                    flashMode = newFlashMode
+
+                    if (newFlashMode != flashMode) {
+                        flashMode = newFlashMode
+                        ++changeCount
+                    }
                 }
 
                 "pref_capture" -> {
@@ -331,7 +332,11 @@ class MainActivity : AppCompatActivity() {
                         //"zero" -> ImageCapture.CAPTURE_MODE_ZERO_SHUTTER_LAG
                         else -> ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
                     }
-                    restartCamera = (newCaptureMode != captureMode)
+
+                    if (newCaptureMode != captureMode) {
+                        //captureMode = newCaptureMode
+                        ++changeCount
+                    }
                 }
 
                 "pref_image_format" -> {
@@ -344,8 +349,11 @@ class MainActivity : AppCompatActivity() {
 
                 "pref_jpeg_quality" -> {
                     val newJpegQuality = pref.value as Int
-                    restartCamera = (newJpegQuality != jpegQuality)
-                    jpegQuality = newJpegQuality
+
+                    if (newJpegQuality != jpegQuality) {
+                        jpegQuality = newJpegQuality
+                        ++changeCount
+                    }
                 }
 
                 "pref_rotation" -> {
@@ -356,8 +364,20 @@ class MainActivity : AppCompatActivity() {
                         "270" -> Surface.ROTATION_270
                         else -> TARGET_ROTATION_UNINITIALIZED
                     }
-                    restartCamera = (newTargetRotation != targetRotation)
-                    targetRotation = newTargetRotation
+
+                    if (newTargetRotation != targetRotation) {
+                        targetRotation = newTargetRotation
+                        ++changeCount
+                    }
+                }
+
+                "pref_extension" -> {
+                    val newExtensionMode = extensionFromName(pref.value as String)
+
+                    if (newExtensionMode != extensionMode) {
+                        extensionMode = newExtensionMode
+                        ++changeCount
+                    }
                 }
 
                 "pref_scale" -> {
@@ -367,8 +387,11 @@ class MainActivity : AppCompatActivity() {
                         "end" -> PreviewView.ScaleType.FIT_END
                         else -> scaleType
                     }
-                    restartCamera = (newScaleType != scaleType)
-                    scaleType = newScaleType
+
+                    if (newScaleType != scaleType) {
+                        scaleType = newScaleType
+                        ++changeCount
+                    }
                 }
 
                 // TODO(davide): Temporary. The user shouldn't be aware of this
@@ -377,8 +400,11 @@ class MainActivity : AppCompatActivity() {
                         CameraUseCase.PREVIEW_VIDEO
                     else
                         CameraUseCase.PREVIEW_CAPTURE
-                    restartCamera = (newUseCase != currUseCase)
-                    currUseCase = newUseCase
+
+                    if (newUseCase != currUseCase) {
+                        currUseCase = newUseCase
+                        ++changeCount
+                    }
                 }
 
                 "pref_video_quality" -> {
@@ -390,8 +416,11 @@ class MainActivity : AppCompatActivity() {
                         "Lowest" -> Quality.LOWEST
                         else -> Quality.HIGHEST
                     }
-                    restartCamera = (newVideoQuality != videoQuality)
-                    videoQuality = newVideoQuality
+
+                    if (newVideoQuality != videoQuality) {
+                        videoQuality = newVideoQuality
+                        ++changeCount
+                    }
                 }
 
                 "pref_video_duration" -> {
@@ -432,16 +461,19 @@ class MainActivity : AppCompatActivity() {
         if (newCaptureMode != captureMode) {
             jpegQuality = JPEG_QUALITY_UNINITIALIZED
             captureMode = newCaptureMode
-            restartCamera = true
+            ++changeCount
         }
 
-        return restartCamera
+        return changeCount > 0
     }
 
     private fun applySettingsToCurrentCamera(camInfo: CameraInfo, camControl: CameraControl) {
         if (camInfo.exposureState.exposureCompensationIndex != exposureCompensationIndex) {
             camControl.setExposureCompensationIndex(exposureCompensationIndex)
         }
+
+        currCamInfo = camInfo
+        currCamControl = camControl
     }
 
     // TODO(davide): Add more metadata. Location, producer, ...
@@ -449,7 +481,7 @@ class MainActivity : AppCompatActivity() {
         val imageCapture = imageCapture ?: return
 
         val name = SimpleDateFormat(FILENAME_FORMAT, Locale.US).format(System.currentTimeMillis())
-        if (fancyCapture || requestedFormat != Mime.JPEG) {
+        if (requestedFormat != Mime.JPEG && extensionMode == ExtensionMode.NONE) {
             val contentValues = makeContentValues(name, requestedFormat.toString())
             // TODO(davide): Launch another executor for png, since it's very slow
             imageCapture.takePicture(
@@ -645,67 +677,112 @@ class MainActivity : AppCompatActivity() {
         playing = true
     }
 
-    @SuppressLint("WrongConstant")
-    private fun startCamera() {
-        Log.d(TAG, "START CAMERA")
+    private fun buildSelector(): CameraSelector {
+        return CameraSelector.Builder().requireLensFacing(lensFacing).build()
+    }
 
+    @SuppressLint("WrongConstant")
+    private fun buildPreview(): Preview {
+        val preview = Preview.Builder()
+            .apply {
+                if (targetRotation != TARGET_ROTATION_UNINITIALIZED || currUseCase == CameraUseCase.PREVIEW_VIDEO)
+                    setTargetRotation(targetRotation)
+            }.build()
+            .also {
+                viewBinding.viewFinder.scaleType = scaleType
+                it.setSurfaceProvider(viewBinding.viewFinder.surfaceProvider)
+            }
+        return preview
+    }
+
+    @SuppressLint("WrongConstant")
+    private fun buildImageCapture(): ImageCapture {
+        val imageCapture = ImageCapture.Builder()
+            .setCaptureMode(captureMode)
+            .setFlashMode(flashMode)
+            .apply {
+                if (jpegQuality != JPEG_QUALITY_UNINITIALIZED)
+                    setJpegQuality(jpegQuality)
+                if (targetRotation != TARGET_ROTATION_UNINITIALIZED)
+                    setTargetRotation(targetRotation)
+            }
+            .build()
+        return imageCapture
+    }
+
+    private fun startNormalCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
         cameraProviderFuture.addListener({
             val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
+            try {
+                cameraProvider.unbindAll()
 
-            val preview = Preview.Builder()
-                .apply {
-                    if (currUseCase == CameraUseCase.PREVIEW_CAPTURE &&
-                        targetRotation != TARGET_ROTATION_UNINITIALIZED) {
-                        setTargetRotation(targetRotation)
-                    }
-                }
-                .build()
-                .also {
-                    viewBinding.viewFinder.scaleType = scaleType
-                    it.setSurfaceProvider(viewBinding.viewFinder.surfaceProvider)
-                }
-
-            val cameraSelector = CameraSelector.Builder().requireLensFacing(lensFacing).build()
-
-            when (currUseCase) {
-                CameraUseCase.PREVIEW_VIDEO -> {
+                val selector = buildSelector()
+                val preview = buildPreview()
+                val camera = if (currUseCase == CameraUseCase.PREVIEW_VIDEO) {
                     val recorder = Recorder.Builder()
                         .setQualitySelector(QualitySelector.from(videoQuality))
                         .build()
                     videoCapture = VideoCapture.withOutput(recorder)
-                } else -> {
-                    imageCapture = ImageCapture.Builder()
-                        .setCaptureMode(captureMode)
-                        .setFlashMode(flashMode)
-                        .apply {
-                            if (jpegQuality != JPEG_QUALITY_UNINITIALIZED)
-                                setJpegQuality(jpegQuality)
-                            if (targetRotation != TARGET_ROTATION_UNINITIALIZED)
-                                setTargetRotation(targetRotation)
-                        }
-                        .build()
+                    cameraProvider.bindToLifecycle(this, selector, preview, videoCapture)
+                } else {
+                    imageCapture = buildImageCapture()
+                    cameraProvider.bindToLifecycle(this, selector, preview, imageCapture)
                 }
-            }
-
-            try {
-                cameraProvider.unbindAll()
-                // NOTE(davide): Does anyone know how to pass the array of UseCase directly to
-                // avoid the if? It keeps complaining about impossible casts...
-                val camera = if (currUseCase == CameraUseCase.PREVIEW_VIDEO)
-                    cameraProvider.bindToLifecycle(this, cameraSelector, preview, videoCapture)
-                else
-                    cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
-
-                currCamInfo = camera.cameraInfo
-                currCamControl = camera.cameraControl
 
                 applySettingsToCurrentCamera(camera.cameraInfo, camera.cameraControl)
-            } catch(exc: Exception) {
-                Log.e(TAG, "Use case binding failed", exc)
+            } catch (e: Exception) {
+                Log.e(TAG, "Use case binding failed", e)
             }
-
         }, ContextCompat.getMainExecutor(this))
+    }
+
+    private fun startCameraWithExtensions(): Boolean {
+        var result = true
+
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(applicationContext)
+        cameraProviderFuture.addListener({
+            val cameraProvider = cameraProviderFuture.get()
+            // TODO(davide): This throws a NoClassDefFoundError, which can't be caught...
+            // How can we detect when an extension is available then?
+            val extensionManagerFuture = ExtensionsManager.getInstanceAsync(applicationContext, cameraProvider)
+            //
+            extensionManagerFuture.addListener({
+                val extensionManager = extensionManagerFuture.get()
+                val selector = buildSelector()
+                if (extensionManager.isExtensionAvailable(selector, extensionMode)) {
+                    try {
+                        cameraProvider.unbindAll()
+
+                        val selectorX = extensionManager.getExtensionEnabledCameraSelector(selector, extensionMode)
+                        val preview = buildPreview()
+                        imageCapture = buildImageCapture()
+                        val camera = cameraProvider.bindToLifecycle(this, selectorX, preview, imageCapture)
+                        applySettingsToCurrentCamera(camera.cameraInfo, camera.cameraControl)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Use case binding failed", e)
+                        result = false
+                    }
+                }
+                                               }, ContextCompat.getMainExecutor(this))
+                                         }, ContextCompat.getMainExecutor(this))
+
+        return result
+    }
+
+    private fun startCamera() {
+        Log.d(TAG, "START CAMERA")
+
+        if (extensionMode == ExtensionMode.NONE || currUseCase == CameraUseCase.PREVIEW_VIDEO) {
+            startNormalCamera()
+        } else {
+            if (!startCameraWithExtensions()) {
+                Toast.makeText(baseContext, "Extension ${extensionName(extensionMode)} is not supported on this device", Toast.LENGTH_SHORT).show()
+                startNormalCamera()
+            }
+        }
+
+        Log.d(TAG, "START CAMERA ENDED")
     }
 
     private fun requestPermissions() {

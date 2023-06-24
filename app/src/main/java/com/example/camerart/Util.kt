@@ -3,6 +3,7 @@ package com.example.camerart
 import android.content.ContentValues
 import android.os.Build
 import android.provider.MediaStore
+import androidx.camera.extensions.ExtensionMode
 
 
 fun makeContentValues(displayName: String, mimeType: String): ContentValues {
@@ -45,4 +46,28 @@ fun humanizeSize(size: Long): String {
     }
 
     return result.toString() + suffix
+}
+
+fun extensionName(extensionMode: Int): String {
+    val name = when (extensionMode) {
+        ExtensionMode.AUTO -> "Auto"
+        ExtensionMode.BOKEH -> "Bokeh"
+        ExtensionMode.FACE_RETOUCH -> "Pretty Face"
+        ExtensionMode.HDR -> "HDR"
+        ExtensionMode.NIGHT -> "Night"
+        else -> ""
+    }
+    return name
+}
+
+fun extensionFromName(name: String): Int {
+    val mode = when (name) {
+        "Auto" -> ExtensionMode.AUTO
+        "Bokeh" -> ExtensionMode.BOKEH
+        "Pretty Face" -> ExtensionMode.FACE_RETOUCH
+        "HDR" -> ExtensionMode.HDR
+        "Night" -> ExtensionMode.NIGHT
+        else -> ExtensionMode.NONE
+    }
+    return mode
 }

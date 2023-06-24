@@ -52,4 +52,12 @@
     <string-array name="empty2">
     </string-array>
 
+    <string-array name="extensions">
+        <item>None</item>
+        <item>Bokeh</item>
+        <item>Night</item>
+        <item>Pretty Face</item>
+        <item>HDR</item>
+        <item>Auto</item>
+    </string-array>
 </resources>

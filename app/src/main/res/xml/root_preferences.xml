@@ -33,18 +33,20 @@
             app:useSimpleSummaryProvider="true"
             app:defaultValue="0" />
 
-        <SwitchPreferenceCompat
-            app:key="pref_photo_on_click"
-            app:title="Photo on Click"
-            app:summary="Take a photo by tapping anywhere on the screen"
-            app:defaultValue="false" />
-
         <ListPreference
             app:key="pref_image_format"
             app:title="Format"
             app:entries="@array/empty2"
             app:entryValues="@array/empty2"
             app:useSimpleSummaryProvider="false" />
+
+        <ListPreference
+            app:key="pref_extension"
+            app:title="Extension"
+            app:entries="@array/extensions"
+            app:entryValues="@array/extensions"
+            app:useSimpleSummaryProvider="true"
+            app:defaultValue="None" />
 
     </PreferenceCategory>
 
