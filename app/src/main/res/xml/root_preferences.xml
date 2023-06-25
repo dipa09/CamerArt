@@ -48,6 +48,12 @@
             app:useSimpleSummaryProvider="true"
             app:defaultValue="None" />
 
+        <SwitchPreferenceCompat
+            app:key="pref_lumus"
+            app:title="Lumus"
+            app:summary="Show average luminosity"
+            app:defaultValue="false" />
+
     </PreferenceCategory>
 
     <PreferenceCategory app:title="Video">

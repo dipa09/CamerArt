@@ -31,6 +31,7 @@ import androidx.core.view.GestureDetectorCompat
 import androidx.preference.PreferenceManager
 import com.example.camerart.databinding.ActivityMainBinding
 import java.io.IOException
+import java.nio.ByteBuffer
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.ExecutorService
@@ -66,8 +67,13 @@ class MainActivity : AppCompatActivity() {
         const val MIME_TYPE_WEBP = "image/webp"
 
         private const val ON_FIRST_RUN = "onfirstrun"
+
+        const val MODE_CAPTURE = 0
+        const val MODE_VIDEO = 1
+        const val MODE_LUMUS = 2
     }
 
+    /*
     enum class CameraUseCase(val value: Int) {
         NONE(0),
         PREVIEW(1 shl 0),
@@ -78,7 +84,7 @@ class MainActivity : AppCompatActivity() {
         PREVIEW_VIDEO(PREVIEW.value or VIDEO.value),
         PREVIEW_CAPTURE_VIDEO(PREVIEW.value or CAPTURE.value or VIDEO.value)
     }
-
+*/
     enum class SupportedQuality { NONE, SD, HD, FHD, UHD, COUNT }
 
     enum class Mime(private val mime: String) {
@@ -106,7 +112,8 @@ class MainActivity : AppCompatActivity() {
     private var currCamInfo: CameraInfo? = null
     private var currCamControl: CameraControl? = null
 
-    private var currUseCase: CameraUseCase = CameraUseCase.PREVIEW_CAPTURE
+    private var currMode: Int = MODE_CAPTURE
+
     // Capture
     private var lensFacing: Int = CameraSelector.LENS_FACING_BACK
     private var captureMode: Int = ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
@@ -420,15 +427,30 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
+                "pref_lumus" -> {
+                    val newMode = if (pref.value as Boolean) {
+                        viewBinding.statsText.visibility = View.VISIBLE
+                        MODE_LUMUS
+                    } else {
+                        viewBinding.statsText.visibility = View.INVISIBLE
+                        MODE_CAPTURE
+                    }
+
+                    if (newMode != currMode) {
+                        currMode = newMode
+                        ++changeCount
+                    }
+                }
+
                 // TODO(davide): Temporary. The user shouldn't be aware of this
                 "pref_use_video_temp" -> {
-                    val newUseCase = if (pref.value as Boolean)
-                        CameraUseCase.PREVIEW_VIDEO
+                    val newMode = if (pref.value as Boolean)
+                        MODE_VIDEO
                     else
-                        CameraUseCase.PREVIEW_CAPTURE
+                        MODE_CAPTURE
 
-                    if (newUseCase != currUseCase) {
-                        currUseCase = newUseCase
+                    if (newMode != currMode) {
+                        currMode = newMode
                         ++changeCount
                     }
                 }
@@ -711,7 +733,7 @@ class MainActivity : AppCompatActivity() {
     private fun buildPreview(): Preview {
         val preview = Preview.Builder()
             .apply {
-                if (targetRotation != TARGET_ROTATION_UNINITIALIZED || currUseCase == CameraUseCase.PREVIEW_VIDEO)
+                if (targetRotation != TARGET_ROTATION_UNINITIALIZED || currMode == MODE_VIDEO)
                     setTargetRotation(targetRotation)
             }.build()
             .also {
@@ -745,15 +767,34 @@ class MainActivity : AppCompatActivity() {
 
                 val selector = buildSelector()
                 val preview = buildPreview()
-                val camera = if (currUseCase == CameraUseCase.PREVIEW_VIDEO) {
+                val camera = if (currMode == MODE_VIDEO) {
                     val recorder = Recorder.Builder()
                         .setQualitySelector(QualitySelector.from(videoQuality))
                         .build()
                     videoCapture = VideoCapture.withOutput(recorder)
                     cameraProvider.bindToLifecycle(this, selector, preview, videoCapture)
-                } else {
+                } else if (currMode == MODE_CAPTURE) {
                     imageCapture = buildImageCapture()
                     cameraProvider.bindToLifecycle(this, selector, preview, imageCapture)
+                } else {
+                    imageCapture = buildImageCapture()
+                    val analysis = ImageAnalysis.Builder()
+                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                        .build()
+                    analysis.setAnalyzer(cameraExecutor, ImageAnalysis.Analyzer { image ->
+                        val buffer = image.planes[0].buffer
+                        buffer.rewind()
+                        val data = ByteArray(buffer.remaining())
+                        buffer.get(data)
+                        val pixels = data.map { it.toInt() and 0xFF }
+
+                        val luma = pixels.average()
+                        image.close()
+
+                        runOnUiThread { viewBinding.statsText.text = "Avg lums: $luma" }
+                        //Log.d(TAG, "Lumus: $luma")
+                    })
+                    cameraProvider.bindToLifecycle(this, selector, preview, imageCapture, analysis)
                 }
 
                 applySettingsToCurrentCamera(camera.cameraInfo, camera.cameraControl)
@@ -799,7 +840,7 @@ class MainActivity : AppCompatActivity() {
     private fun startCamera() {
         Log.d(TAG, "START CAMERA")
 
-        if (extensionMode == ExtensionMode.NONE || currUseCase == CameraUseCase.PREVIEW_VIDEO) {
+        if (extensionMode == ExtensionMode.NONE || currMode == MODE_VIDEO) {
             startNormalCamera()
         } else {
             if (!startCameraWithExtensions()) {

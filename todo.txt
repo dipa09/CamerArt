@@ -37,5 +37,3 @@
   - Overflow menu
     - Info about gestures
     - Info about the app
-
-- Something that uses ImageAnalysis
