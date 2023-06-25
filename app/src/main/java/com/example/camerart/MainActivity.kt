@@ -358,21 +358,9 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 "pref_capture" -> {
-
-                    /*
-                    if (currCamInfo != null &&
-                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
-                        currCamInfo.isZslSupported) {
-                    }
-                    */
-                    newCaptureMode = when(pref.value) {
-                        "quality" -> ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY
-                        //"zero" -> ImageCapture.CAPTURE_MODE_ZERO_SHUTTER_LAG
-                        else -> ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
-                    }
-
+                    newCaptureMode = captureModeFromName(pref.value as String, currCamInfo)
                     if (newCaptureMode != captureMode) {
-                        //captureMode = newCaptureMode
+                        captureMode = newCaptureMode
                         ++changeCount
                     }
                 }

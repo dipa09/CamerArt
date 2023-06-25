@@ -1,25 +1,17 @@
 package com.example.camerart
 
-import android.app.Activity
 import android.app.AlertDialog
 import android.content.ContentValues
 import android.content.Context
 import android.content.DialogInterface
 import android.os.Build
 import android.provider.MediaStore
-import android.util.Log
-import androidx.camera.core.impl.utils.futures.FutureCallback
-import androidx.camera.core.impl.utils.futures.Futures
+import androidx.camera.core.CameraInfo
+import androidx.camera.core.ImageCapture
 import androidx.camera.extensions.ExtensionMode
-import com.google.common.util.concurrent.ListenableFuture
 import java.io.BufferedReader
-import java.io.DataInputStream
-import java.io.FileNotFoundException
 import java.io.InputStreamReader
 import java.net.URL
-import java.util.concurrent.Callable
-import java.util.concurrent.Executor
-import java.util.concurrent.Executors
 import javax.net.ssl.HttpsURLConnection
 
 
@@ -89,12 +81,29 @@ fun extensionFromName(name: String): Int {
     return mode
 }
 
+fun captureModeFromName(name: String, camInfo: CameraInfo?): Int {
+    var mode = ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
+
+    if (name == "quality") {
+        mode = ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY
+    }
+    // TODO(davide): Even with the suggested annotation it keeps complaining
+    /*else if (name == "zero" && camInfo != null &&
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+        camInfo.isZslSupported) {
+        mode = ImageCapture.CAPTURE_MODE_ZERO_SHUTTER_LAG
+    }*/
+
+    return mode
+}
+
 // https://developer.android.com/training/camerax/devices
 // https://support.google.com/googleplay/answer/1727131?hl=en-GB
 fun deviceHasBeenTested(): Boolean {
     var result = false
     try {
-        val source = "https://raw.githubusercontent.com/dipa09/CamerArt/camera/todo.txt"
+        // TODO(davide): Remember to change this to the main branch
+        val source = "https://raw.githubusercontent.com/dipa09/CamerArt/camera/supported_devices.txt"
         val url = URL(source)
         val conn: HttpsURLConnection = url.openConnection() as HttpsURLConnection
         val br = BufferedReader(InputStreamReader(conn.inputStream))

@@ -36,8 +36,8 @@
         <ListPreference
             app:key="pref_image_format"
             app:title="Format"
-            app:entries="@array/empty2"
-            app:entryValues="@array/empty2"
+            app:entries="@array/empty"
+            app:entryValues="@array/empty"
             app:useSimpleSummaryProvider="false" />
 
         <ListPreference
