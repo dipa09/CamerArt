@@ -20,8 +20,6 @@
   - Mirror mode?
     https://developer.android.com/reference/androidx/camera/video/VideoCapture.Builder#setMirrorMode(int)
 
-- Extensions
-
 - Gestures
   - Animate transitions?
 

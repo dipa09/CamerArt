@@ -42,10 +42,11 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val TAG = "CamerArt"
         private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
+
         private val REQUIRED_PERMISSIONS =
-            mutableListOf (
+            mutableListOf(
                 Manifest.permission.CAMERA,
-                Manifest.permission.RECORD_AUDIO
+                Manifest.permission.RECORD_AUDIO,
             ).apply {
                 if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
                     add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
@@ -63,6 +64,8 @@ class MainActivity : AppCompatActivity() {
         const val MIME_TYPE_JPEG = "image/jpeg"
         const val MIME_TYPE_PNG  = "image/png"
         const val MIME_TYPE_WEBP = "image/webp"
+
+        private const val ON_FIRST_RUN = "onfirstrun"
     }
 
     enum class CameraUseCase(val value: Int) {
@@ -128,22 +131,35 @@ class MainActivity : AppCompatActivity() {
     private var exposureCompensationIndex: Int = 0
     private var delayBeforeActionSeconds: Int = 0
 
-    private val activityResultLauncher =
+    private val requestPermissionLauncher =
         registerForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions())
         { permissions ->
-            // Handle Permission granted/rejected
             var permissionGranted = true
             permissions.entries.forEach {
                 if (it.key in REQUIRED_PERMISSIONS && !it.value)
                     permissionGranted = false
             }
+
             if (!permissionGranted) {
                 Toast.makeText(baseContext, "Permission request denied", Toast.LENGTH_SHORT).show()
             } else {
-                startCamera()
+                initialize()
             }
         }
+
+    private fun requestPermissions() {
+        requestPermissionLauncher.launch(REQUIRED_PERMISSIONS)
+    }
+
+    private fun allPermissionsGranted(): Boolean {
+        for (perm in REQUIRED_PERMISSIONS) {
+            if (ContextCompat.checkSelfPermission(baseContext, perm) != PackageManager.PERMISSION_GRANTED) {
+                return false
+            }
+        }
+        return true
+    }
 
     override fun onDestroy() {
         super.onDestroy()
@@ -158,6 +174,26 @@ class MainActivity : AppCompatActivity() {
             startCamera()
         }
         Log.d(TAG, "ON RESUME ENDED")
+    }
+
+    private fun firstRunCheck() {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+        if (prefs.getBoolean(ON_FIRST_RUN, true)) {
+            prefs.edit().putBoolean(ON_FIRST_RUN, false).apply()
+
+            Thread {
+                if (!deviceHasBeenTested()) {
+                    runOnUiThread { infoDialog(this) }
+                }
+            }.start()
+        }
+    }
+
+    private fun initialize() {
+        firstRunCheck()
+        getAvailableMimes()
+        loadPreferences()
+        startCamera()
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -181,9 +217,7 @@ class MainActivity : AppCompatActivity() {
         scaleDetector = ScaleGestureDetector(viewBinding.viewFinder.context, scaleListener)
 
         if (allPermissionsGranted()) {
-            getAvailableMimes()
-            loadPreferences()
-            startCamera()
+            initialize()
         } else {
             requestPermissions()
         }
@@ -324,9 +358,13 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 "pref_capture" -> {
+
                     /*
-                    if (currCameraInfo != null && currCameraInfo.isZslSupported) {
-                    }*/
+                    if (currCamInfo != null &&
+                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+                        currCamInfo.isZslSupported) {
+                    }
+                    */
                     newCaptureMode = when(pref.value) {
                         "quality" -> ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY
                         //"zero" -> ImageCapture.CAPTURE_MODE_ZERO_SHUTTER_LAG
@@ -783,14 +821,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         Log.d(TAG, "START CAMERA ENDED")
-    }
-
-    private fun requestPermissions() {
-        activityResultLauncher.launch(REQUIRED_PERMISSIONS)
-    }
-
-    private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
-        ContextCompat.checkSelfPermission(baseContext, it) == PackageManager.PERMISSION_GRANTED
     }
 
     private fun countdown(seconds: Int) {

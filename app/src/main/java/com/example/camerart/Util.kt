@@ -1,9 +1,26 @@
 package com.example.camerart
 
+import android.app.Activity
+import android.app.AlertDialog
 import android.content.ContentValues
+import android.content.Context
+import android.content.DialogInterface
 import android.os.Build
 import android.provider.MediaStore
+import android.util.Log
+import androidx.camera.core.impl.utils.futures.FutureCallback
+import androidx.camera.core.impl.utils.futures.Futures
 import androidx.camera.extensions.ExtensionMode
+import com.google.common.util.concurrent.ListenableFuture
+import java.io.BufferedReader
+import java.io.DataInputStream
+import java.io.FileNotFoundException
+import java.io.InputStreamReader
+import java.net.URL
+import java.util.concurrent.Callable
+import java.util.concurrent.Executor
+import java.util.concurrent.Executors
+import javax.net.ssl.HttpsURLConnection
 
 
 fun makeContentValues(displayName: String, mimeType: String): ContentValues {
@@ -70,4 +87,39 @@ fun extensionFromName(name: String): Int {
         else -> ExtensionMode.NONE
     }
     return mode
+}
+
+// https://developer.android.com/training/camerax/devices
+// https://support.google.com/googleplay/answer/1727131?hl=en-GB
+fun deviceHasBeenTested(): Boolean {
+    var result = false
+    try {
+        val source = "https://raw.githubusercontent.com/dipa09/CamerArt/camera/todo.txt"
+        val url = URL(source)
+        val conn: HttpsURLConnection = url.openConnection() as HttpsURLConnection
+        val br = BufferedReader(InputStreamReader(conn.inputStream))
+        var line: String?
+
+        val models = MutableList(1) {""}
+        while (br.readLine().also { line = it } != null) {
+            models.add(line!!)
+        }
+        //models.add("ONE E1003")
+
+        result = models.binarySearch(Build.MODEL) >= 0
+    } catch (e: Exception) {
+        result = false
+    }
+
+    return result
+}
+
+fun infoDialog(context: Context) {
+    val doNothing = { _: DialogInterface, _: Int -> }
+
+    val B = AlertDialog.Builder(context)
+    B.setTitle("Warning")
+    B.setMessage("Your device may not be fully supported")
+    B.setNeutralButton("OK", doNothing)
+    B.show()
 }
