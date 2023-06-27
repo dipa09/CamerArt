@@ -56,4 +56,11 @@
         <item>HDR</item>
         <item>Auto</item>
     </string-array>
+
+    <string-array name="metering_modes">
+        <item>Auto Focus</item>
+        <item>Auto Exposure</item>
+        <item>Auto White Balance</item>
+    </string-array>
+
 </resources>

@@ -4,8 +4,6 @@
     https://developer.android.com/training/camerax/configuration#specify-resolution
   - Cancel metering
     https://developer.android.com/reference/androidx/camera/core/CameraControl#cancelFocusAndMetering()
-  - Metering modes
-    https://developer.android.com/training/camerax/configuration#focus-and-metering
 
 - Image Capture
   - setResolutionSelector

@@ -36,6 +36,7 @@ import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlin.collections.HashSet
 import kotlin.math.abs
 
 class MainActivity : AppCompatActivity() {
@@ -71,20 +72,10 @@ class MainActivity : AppCompatActivity() {
         const val MODE_VIDEO = 1
         const val MODE_LUMUS = 2
         const val MODE_MULTI_CAMERA = 3
+
+        const val FADING_MESSAGE_DEFAULT_DELAY = 1
     }
 
-    /*
-    enum class CameraUseCase(val value: Int) {
-        NONE(0),
-        PREVIEW(1 shl 0),
-        CAPTURE(1 shl 1),
-        VIDEO(1 shl 2),
-
-        PREVIEW_CAPTURE(PREVIEW.value or CAPTURE.value),
-        PREVIEW_VIDEO(PREVIEW.value or VIDEO.value),
-        PREVIEW_CAPTURE_VIDEO(PREVIEW.value or CAPTURE.value or VIDEO.value)
-    }
-*/
     enum class SupportedQuality { NONE, SD, HD, FHD, UHD, COUNT }
 
     enum class Mime(private val mime: String) {
@@ -122,6 +113,9 @@ class MainActivity : AppCompatActivity() {
     private var targetRotation: Int = TARGET_ROTATION_UNINITIALIZED
     private var focusing: Boolean = false
     private var extensionMode: Int = ExtensionMode.NONE
+    private var meteringMode: Int = (FocusMeteringAction.FLAG_AF or
+                                     FocusMeteringAction.FLAG_AE or
+                                     FocusMeteringAction.FLAG_AWB)
 
     // Video
     private var audioEnabled: Boolean = true
@@ -178,7 +172,7 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
 
-        if (loadPreferences()) {
+        if (loadPreferences(false)) {
             Log.d(TAG, "RESTART CAMERA")
             startCamera()
         }
@@ -201,7 +195,7 @@ class MainActivity : AppCompatActivity() {
     private fun initialize() {
         firstRunCheck()
         getAvailableMimes()
-        loadPreferences()
+        loadPreferences(true)
         startCamera()
     }
 
@@ -283,10 +277,8 @@ class MainActivity : AppCompatActivity() {
         if (camInfo != null) {
             // TODO(davide): Do this only when the camera has changed. e.g. front/back
             val qualities = QualitySelector.getSupportedQualities(camInfo)
-
-            val values = Array<String>(qualities.size + 2){""}
-            val resolutionNames = Array<String>(qualities.size + 2){""}
-
+            val values = Array(qualities.size + 2){""}
+            val resolutionNames = Array(qualities.size + 2){""}
             for (i in qualities.indices) {
                 val quality = qualities[i]
                 var prefix: String = ""
@@ -327,12 +319,10 @@ class MainActivity : AppCompatActivity() {
             intent.putExtra("supportedQualities", values)
             intent.putExtra("supportedResolutions", resolutionNames)
 
-            intent.putExtra("supportedImageFormats", supportedMimes)
-
             intent.putExtra("exposureState", exposureStateToBundle(camInfo.exposureState))
-
-            intent.putExtra("features", cameraFeaturesToBundle(cameraFeatures))
         }
+        intent.putExtra("supportedImageFormats", supportedMimes)
+        intent.putExtra("features", cameraFeaturesToBundle(cameraFeatures))
 
         this.startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this).toBundle())
     }
@@ -370,7 +360,7 @@ class MainActivity : AppCompatActivity() {
     // NOTE(davide): For some reason, sometimes you need to delete app's data if you edit
     // a previous preference from root_preferences.xml or arrays.xml, otherwise you get
     // a random exception.
-    private fun loadPreferences(): Boolean {
+    private fun loadPreferences(onCreate: Boolean): Boolean {
         var changeCount = 0
 
         val sharedPreference = PreferenceManager.getDefaultSharedPreferences(this)
@@ -455,6 +445,22 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
+                "pref_metering_mode" -> {
+                    //Log.d("YYY", "${pref.value}")
+                    try {
+                        var newMeteringMode = 0
+                        for (meterName in pref.value as HashSet<String>) {
+                            newMeteringMode = newMeteringMode or meteringModeFromName(meterName)
+                        }
+
+                        if (newMeteringMode != meteringMode) {
+                            meteringMode = newMeteringMode
+                            if (!onCreate)
+                                fadingMessage(describeMeteringMode(meteringMode), 2)
+                        }
+                    } catch (_: Exception) { }
+                }
+
                 "pref_lumus" -> {
                     val newMode = if (pref.value as Boolean) {
                         viewBinding.statsText.visibility = View.VISIBLE
@@ -473,18 +479,6 @@ class MainActivity : AppCompatActivity() {
                 // TODO(davide): Temporary. The user shouldn't be aware of this
                 "pref_use_video_temp" -> {
                     changeCount = toggleMode(pref.value as Boolean, MODE_VIDEO, changeCount)
-                /*
-                    val newMode = if (pref.value as Boolean)
-                        MODE_VIDEO
-                    else
-                        MODE_CAPTURE
-
-                    if (newMode != currMode) {
-                        currMode = newMode
-                        ++changeCount
-                    }
-
-                     */
                 }
 
                 "pref_video_quality" -> {
@@ -898,19 +892,37 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, "START CAMERA ENDED")
     }
 
+    private fun enableInfoTextView(mesg: String) {
+        viewBinding.infoText.apply {
+            text = mesg
+            visibility = View.VISIBLE
+        }
+    }
+
+    private fun disableInfoTextView() {
+        viewBinding.infoText.apply {
+            text = ""
+            visibility = View.INVISIBLE
+        }
+    }
+    private fun fadingMessage(mesg: String, seconds: Int = FADING_MESSAGE_DEFAULT_DELAY) {
+        enableInfoTextView(mesg)
+        object : CountDownTimer(seconds.toLong()*1000, 1000) {
+            override fun onFinish() { disableInfoTextView() }
+            override fun onTick(p0: Long) { }
+        }.start()
+    }
+
     private fun countdown(seconds: Int) {
         if (seconds > 0) {
-            viewBinding.infoText.text = "$seconds"
-            viewBinding.infoText.visibility = View.VISIBLE
+            enableInfoTextView("$seconds")
 
             object : CountDownTimer(delayBeforeActionSeconds.toLong()*1000, 1000) {
                 override fun onTick(reamaining_ms: Long) {
                     viewBinding.infoText.text = "${reamaining_ms / 1000}"
                 }
 
-                override fun onFinish() {
-                    viewBinding.infoText.visibility = View.INVISIBLE
-                }
+                override fun onFinish() { disableInfoTextView() }
             }.start()
         }
     }
@@ -949,7 +961,7 @@ class MainActivity : AppCompatActivity() {
                 val pointFactory = viewBinding.viewFinder.meteringPointFactory
                 val p1 = pointFactory.createPoint(posX, posY)
                 //val p2 = pointFactory.createPoint(e.x)
-                val action = FocusMeteringAction.Builder(p1)
+                val action = FocusMeteringAction.Builder(p1, meteringMode)
                     .setAutoCancelDuration(3, TimeUnit.SECONDS)
                     .build()
 

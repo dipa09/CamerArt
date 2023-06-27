@@ -48,6 +48,14 @@
             app:useSimpleSummaryProvider="true"
             app:defaultValue="None" />
 
+        <MultiSelectListPreference
+            app:key="pref_metering_mode"
+            app:title="Metering"
+            app:entries="@array/metering_modes"
+            app:entryValues="@array/metering_modes"
+            app:defaultValue="@array/metering_modes"
+            />
+
         <SwitchPreferenceCompat
             app:key="pref_lumus"
             app:title="Lumus"

@@ -9,6 +9,7 @@ import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
 import androidx.camera.core.CameraInfo
+import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.ImageCapture
 import androidx.camera.extensions.ExtensionMode
 import java.io.BufferedReader
@@ -97,6 +98,29 @@ fun captureModeFromName(name: String, camInfo: CameraInfo?): Int {
     }*/
 
     return mode
+}
+
+fun meteringModeFromName(name: CharSequence): Int {
+    var mode = 0
+    when (name) {
+        "Auto Focus" -> mode = FocusMeteringAction.FLAG_AF
+        "Auto Exposure" -> mode = FocusMeteringAction.FLAG_AE
+        "Auto White Balance" -> mode = FocusMeteringAction.FLAG_AWB
+    }
+
+    return mode
+}
+
+fun describeMeteringMode(mode: Int): String {
+    val sb = StringBuilder()
+    if ((mode and FocusMeteringAction.FLAG_AE) != 0)
+        sb.append("E")
+    if ((mode and FocusMeteringAction.FLAG_AF) != 0)
+        sb.append("F")
+    if ((mode and FocusMeteringAction.FLAG_AWB) != 0)
+        sb.append("WB")
+
+    return sb.toString()
 }
 
 // https://developer.android.com/training/camerax/devices
