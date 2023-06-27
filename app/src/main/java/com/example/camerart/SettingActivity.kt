@@ -7,15 +7,29 @@ import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SeekBarPreference
-import androidx.preference.SwitchPreferenceCompat
 
 class SettingActivity : AppCompatActivity() {
     class SettingsFragment : PreferenceFragmentCompat() {
         var supportedQualities: Array<String>? = null
         var supportedResolutions: Array<String>? = null
 
+        private fun enablePreference(name: String, state: Boolean) {
+            val pref: Preference? = findPreference(name)
+            if (pref != null) {
+                pref.isEnabled = state
+            }
+        }
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             setPreferencesFromResource(R.xml.root_preferences, rootKey)
+
+            val featuresBundle = arguments?.getBundle("features")
+            val features = if (featuresBundle != null)
+                cameraFeaturesFromBundle(featuresBundle)
+            else
+                CameraFeatures(false, false, false)
+
+            enablePreference("pref_flash", features.hasFlash)
+            enablePreference("pref_multi_camera", features.hasMulti)
 
             // NOTE(davide): Keep the UI consistent since these two are correlated
             val prefCapture: ListPreference? = findPreference("pref_capture")
@@ -47,7 +61,6 @@ class SettingActivity : AppCompatActivity() {
                 }
             }
 
-            // NOTE(davide): Display available image formats
             val prefImageFormat: ListPreference? = findPreference("pref_image_format")
             if (prefImageFormat != null) {
                 val formats = arguments?.getIntArray("supportedImageFormats")
@@ -97,22 +110,11 @@ class SettingActivity : AppCompatActivity() {
                     val iter = duration.iterator()
                     for (ch in iter) {
                         valid = (ch.isDigit() ||
-                                (iter.hasNext() &&
-                                        (ch.lowercaseChar() == 's' || ch.lowercaseChar() == 'm' || ch.lowercaseChar() == 'h')))
+                                (iter.hasNext() && (ch.lowercaseChar() == 's' || ch.lowercaseChar() == 'm' || ch.lowercaseChar() == 'h')))
                         if (!valid)
                             break
                     }
                     valid
-                }
-            }
-
-            val prefMultiCamera: SwitchPreferenceCompat? = findPreference("pref_multi_camera")
-            if (prefMultiCamera != null) {
-                val featuresBundle = arguments?.getBundle("features")
-                if (featuresBundle != null) {
-                    val features = cameraFeaturesFromBundle(featuresBundle)
-                    if (features.hasMulti)
-                        prefMultiCamera.isEnabled = true
                 }
             }
         }

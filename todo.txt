@@ -1,7 +1,5 @@
 - Configuration
   - Detect devices capable of Preview + Vide + Photo use case
-  - Ensure that front and back cameras are available
-
   - Set resolution
     https://developer.android.com/training/camerax/configuration#specify-resolution
   - Cancel metering
@@ -9,16 +7,9 @@
   - Metering modes
     https://developer.android.com/training/camerax/configuration#focus-and-metering
 
-- Disable flash preference in case flash is not supported
-- Disable switch camera button when there is only one camera
-
 - Image Capture
   - setResolutionSelector
   - Zero lag mode for devices that support it
-
-- Video
-  - Mirror mode?
-    https://developer.android.com/reference/androidx/camera/video/VideoCapture.Builder#setMirrorMode(int)
 
 - Gestures
   - Animate transitions?

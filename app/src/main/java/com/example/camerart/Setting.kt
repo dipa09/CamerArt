@@ -34,7 +34,6 @@ fun exposureStateToBundle(expState: ExposureState): Bundle {
 }
 
 data class CameraFeatures(val hasFront: Boolean, val hasFlash: Boolean, val hasMulti: Boolean)
-
 fun initCameraFeatures(packageManager: PackageManager): CameraFeatures {
     val multi = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
                 packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_CONCURRENT)

@@ -237,9 +237,15 @@ class MainActivity : AppCompatActivity() {
         viewBinding.imageCaptureButton.setOnClickListener { takePhoto() }
         viewBinding.videoCaptureButton.setOnClickListener { captureVideo() }
         viewBinding.muteButton.setOnClickListener { toggleAudio() }
-        viewBinding.cameraButton.setOnClickListener { toggleCamera() }
         viewBinding.settingsButton.setOnClickListener { launchSetting() }
         viewBinding.playButton.setOnClickListener { controlVideoRecording() }
+        if (cameraFeatures.hasFront) {
+            viewBinding.cameraButton.setOnClickListener { toggleCamera() }
+        } else {
+            flashMode = ImageCapture.FLASH_MODE_OFF
+            viewBinding.cameraButton.isEnabled = false
+            viewBinding.cameraButton.visibility = View.INVISIBLE
+        }
 
         viewBinding.viewFinder.setOnTouchListener { _, motionEvent ->
             scaleDetector.onTouchEvent(motionEvent)
