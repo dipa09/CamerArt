@@ -50,11 +50,17 @@
 
         <MultiSelectListPreference
             app:key="pref_metering_mode"
-            app:title="Metering"
+            app:title="Metering Mode"
             app:entries="@array/metering_modes"
             app:entryValues="@array/metering_modes"
-            app:defaultValue="@array/metering_modes"
-            />
+            app:defaultValue="@array/metering_modes" />
+
+        <DropDownPreference
+            app:key="pref_auto_cancel_duration"
+            app:title="Focus Auto Cancel Duration"
+            app:entries="@array/numbers"
+            app:entryValues="@array/numbers"
+            app:summary="Delay in seconds before cancelling focus" />
 
         <SwitchPreferenceCompat
             app:key="pref_lumus"

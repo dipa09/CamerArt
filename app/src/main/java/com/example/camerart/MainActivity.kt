@@ -116,6 +116,7 @@ class MainActivity : AppCompatActivity() {
     private var meteringMode: Int = (FocusMeteringAction.FLAG_AF or
                                      FocusMeteringAction.FLAG_AE or
                                      FocusMeteringAction.FLAG_AWB)
+    private var autoCancelDuration = FOCUS_AUTO_CANCEL_DEFAULT_DURATION
 
     // Video
     private var audioEnabled: Boolean = true
@@ -459,6 +460,12 @@ class MainActivity : AppCompatActivity() {
                                 fadingMessage(describeMeteringMode(meteringMode), 2)
                         }
                     } catch (_: Exception) { }
+                }
+
+                "pref_auto_cancel_duration" -> {
+                    try {
+                        autoCancelDuration = (pref.value as String).toLong()
+                    } catch (_: NumberFormatException) { }
                 }
 
                 "pref_lumus" -> {
@@ -971,7 +978,7 @@ class MainActivity : AppCompatActivity() {
                 val pointFactory = viewBinding.viewFinder.meteringPointFactory
                 val p1 = pointFactory.createPoint(posX, posY)
                 val action = FocusMeteringAction.Builder(p1, meteringMode)
-                    .setAutoCancelDuration(FOCUS_AUTO_CANCEL_DEFAULT_DURATION, TimeUnit.SECONDS)
+                    .setAutoCancelDuration(autoCancelDuration, TimeUnit.SECONDS)
                     .build()
 
                 viewBinding.focusRing.apply {
