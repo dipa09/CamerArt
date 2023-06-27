@@ -4,8 +4,10 @@ import android.app.AlertDialog
 import android.content.ContentValues
 import android.content.Context
 import android.content.DialogInterface
+import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.MediaStore
+import android.util.Log
 import androidx.camera.core.CameraInfo
 import androidx.camera.core.ImageCapture
 import androidx.camera.extensions.ExtensionMode
@@ -131,4 +133,27 @@ fun infoDialog(context: Context) {
     B.setMessage("Your device may not be fully supported")
     B.setNeutralButton("OK", doNothing)
     B.show()
+}
+
+fun dumpCameraFeatures(packageManager: PackageManager) {
+    val features = mutableListOf(
+        PackageManager.FEATURE_CAMERA_ANY,
+        PackageManager.FEATURE_CAMERA_AUTOFOCUS,
+        PackageManager.FEATURE_CAMERA_CAPABILITY_MANUAL_POST_PROCESSING,
+        PackageManager.FEATURE_CAMERA_CAPABILITY_MANUAL_SENSOR,
+        PackageManager.FEATURE_CAMERA_EXTERNAL,
+        PackageManager.FEATURE_CAMERA_FLASH,
+        PackageManager.FEATURE_CAMERA_FRONT,
+        PackageManager.FEATURE_CAMERA_LEVEL_FULL
+    ).apply {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
+            PackageManager.FEATURE_CAMERA_AR
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+            add(PackageManager.FEATURE_CAMERA_CONCURRENT)
+    }
+
+    for (feature in features) {
+        val result = packageManager.hasSystemFeature(feature)
+        Log.d("Camera Feature", "$feature -- $result")
+    }
 }

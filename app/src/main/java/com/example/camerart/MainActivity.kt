@@ -31,7 +31,6 @@ import androidx.core.view.GestureDetectorCompat
 import androidx.preference.PreferenceManager
 import com.example.camerart.databinding.ActivityMainBinding
 import java.io.IOException
-import java.nio.ByteBuffer
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.ExecutorService
@@ -71,6 +70,7 @@ class MainActivity : AppCompatActivity() {
         const val MODE_CAPTURE = 0
         const val MODE_VIDEO = 1
         const val MODE_LUMUS = 2
+        const val MODE_MULTI_CAMERA = 3
     }
 
     /*
@@ -137,6 +137,8 @@ class MainActivity : AppCompatActivity() {
     private var requestedFormat: Mime = Mime.JPEG
     private var exposureCompensationIndex: Int = 0
     private var delayBeforeActionSeconds: Int = 0
+
+    private lateinit var cameraFeatures: CameraFeatures
 
     private val requestPermissionLauncher =
         registerForActivityResult(
@@ -207,6 +209,9 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "ON CREATE START")
+
+        //dumpCameraFeatures(packageManager)
+        cameraFeatures = initCameraFeatures(packageManager)
 
         /*
         // NOTE(davide): This must come before setContentView
@@ -319,6 +324,8 @@ class MainActivity : AppCompatActivity() {
             intent.putExtra("supportedImageFormats", supportedMimes)
 
             intent.putExtra("exposureState", exposureStateToBundle(camInfo.exposureState))
+
+            intent.putExtra("features", cameraFeaturesToBundle(cameraFeatures))
         }
 
         this.startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this).toBundle())
@@ -337,6 +344,21 @@ class MainActivity : AppCompatActivity() {
 
         assert(availMimes.size > 0)
         supportedMimes = availMimes.toIntArray()
+    }
+
+    private fun toggleMode(prefValue: Boolean, newState: Int, changeCount: Int): Int {
+        val newMode = if (prefValue)
+            newState
+        else
+            currMode
+
+        var newChangeCount = changeCount
+        if (newMode != currMode) {
+            currMode = newMode
+            ++newChangeCount
+        }
+
+        return newChangeCount
     }
 
     // NOTE(davide): For some reason, sometimes you need to delete app's data if you edit
@@ -444,6 +466,8 @@ class MainActivity : AppCompatActivity() {
 
                 // TODO(davide): Temporary. The user shouldn't be aware of this
                 "pref_use_video_temp" -> {
+                    changeCount = toggleMode(pref.value as Boolean, MODE_VIDEO, changeCount)
+                /*
                     val newMode = if (pref.value as Boolean)
                         MODE_VIDEO
                     else
@@ -453,6 +477,8 @@ class MainActivity : AppCompatActivity() {
                         currMode = newMode
                         ++changeCount
                     }
+
+                     */
                 }
 
                 "pref_video_quality" -> {
@@ -502,6 +528,9 @@ class MainActivity : AppCompatActivity() {
                     delayBeforeActionSeconds = pref.value as Int
                 }
 
+                "pref_multi_camera" -> {
+                    changeCount = toggleMode(pref.value as Boolean, MODE_MULTI_CAMERA, changeCount)
+                }
             }
         }
 
@@ -779,9 +808,11 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     imageCapture = buildImageCapture()
                     val analysis = ImageAnalysis.Builder()
+                        //.setOutputImageFormat(OUTPUT_IMAGE_FORMAT_RGBA_8888)
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                         .build()
                     analysis.setAnalyzer(cameraExecutor, ImageAnalysis.Analyzer { image ->
+                        val rotation = image.imageInfo.rotationDegrees
                         val buffer = image.planes[0].buffer
                         buffer.rewind()
                         val data = ByteArray(buffer.remaining())
@@ -791,7 +822,8 @@ class MainActivity : AppCompatActivity() {
                         val luma = pixels.average()
                         image.close()
 
-                        runOnUiThread { viewBinding.statsText.text = "Avg lums: $luma" }
+                        val lumaStr = String.format("%.2f", luma)
+                        runOnUiThread { viewBinding.statsText.text = "Lum: $lumaStr\nRot: $rotation°" }
                         //Log.d(TAG, "Lumus: $luma")
                     })
                     cameraProvider.bindToLifecycle(this, selector, preview, imageCapture, analysis)
@@ -802,6 +834,12 @@ class MainActivity : AppCompatActivity() {
                 Log.e(TAG, "Use case binding failed", e)
             }
         }, ContextCompat.getMainExecutor(this))
+    }
+
+    private fun startMultiCamera() {
+        // TODO(davide): Multi camera support won't be available until CameraX 1.3...
+
+        startNormalCamera()
     }
 
     private fun startCameraWithExtensions(): Boolean {
@@ -842,6 +880,8 @@ class MainActivity : AppCompatActivity() {
 
         if (extensionMode == ExtensionMode.NONE || currMode == MODE_VIDEO) {
             startNormalCamera()
+        } else if (currMode == MODE_MULTI_CAMERA) {
+            startMultiCamera()
         } else {
             if (!startCameraWithExtensions()) {
                 Toast.makeText(baseContext, "Extension ${extensionName(extensionMode)} is not supported on this device", Toast.LENGTH_SHORT).show()

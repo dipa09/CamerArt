@@ -110,6 +110,13 @@
             app:showSeekBarValue="true"
             app:enabled="false" />
 
+        <SwitchPreferenceCompat
+            app:key="pref_multi_camera"
+            app:title="Multi Camera"
+            app:summary="Use front and back camera simultaneously"
+            app:defaultValue="false"
+            app:enabled="false" />
+
     </PreferenceCategory>
 
 </PreferenceScreen>

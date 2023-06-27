@@ -7,6 +7,7 @@ import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SeekBarPreference
+import androidx.preference.SwitchPreferenceCompat
 
 class SettingActivity : AppCompatActivity() {
     class SettingsFragment : PreferenceFragmentCompat() {
@@ -102,6 +103,16 @@ class SettingActivity : AppCompatActivity() {
                             break
                     }
                     valid
+                }
+            }
+
+            val prefMultiCamera: SwitchPreferenceCompat? = findPreference("pref_multi_camera")
+            if (prefMultiCamera != null) {
+                val featuresBundle = arguments?.getBundle("features")
+                if (featuresBundle != null) {
+                    val features = cameraFeaturesFromBundle(featuresBundle)
+                    if (features.hasMulti)
+                        prefMultiCamera.isEnabled = true
                 }
             }
         }
