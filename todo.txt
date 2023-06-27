@@ -2,12 +2,9 @@
   - Detect devices capable of Preview + Vide + Photo use case
   - Set resolution
     https://developer.android.com/training/camerax/configuration#specify-resolution
-  - Cancel metering
-    https://developer.android.com/reference/androidx/camera/core/CameraControl#cancelFocusAndMetering()
 
 - Image Capture
   - setResolutionSelector
-  - Zero lag mode for devices that support it
 
 - Gestures
   - Animate transitions?
@@ -19,10 +16,8 @@
 
 - Camera UI
   - Use a single button for photo and video
-  - Restore zoom between sessions?
 
 - Setting UI
-  - Enable the appbar, showing back button, title and overflow menu
   - Overflow menu
     - Info about gestures
     - Info about the app

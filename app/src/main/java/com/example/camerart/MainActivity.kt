@@ -74,8 +74,8 @@ class MainActivity : AppCompatActivity() {
         const val MODE_MULTI_CAMERA = 3
 
         const val FADING_MESSAGE_DEFAULT_DELAY = 1
+        const val FOCUS_AUTO_CANCEL_DEFAULT_DURATION: Long = 3
     }
-
     enum class SupportedQuality { NONE, SD, HD, FHD, UHD, COUNT }
 
     enum class Mime(private val mime: String) {
@@ -954,15 +954,24 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun focus(posX: Float, posY: Float) {
-        if (!focusing) {
-            val camControl = currCamControl
-            if (camControl != null) {
+    private fun finishFocus() {
+        viewBinding.focusRing.visibility = View.INVISIBLE
+        focusing = false
+    }
+
+    private fun focus(posX: Float, posY: Float) {
+        val camControl = currCamControl
+        if (camControl != null) {
+            if (focusing) {
+                val result = camControl.cancelFocusAndMetering()
+                result.addListener({
+                    finishFocus()
+                }, ContextCompat.getMainExecutor(baseContext))
+            } else {
                 val pointFactory = viewBinding.viewFinder.meteringPointFactory
                 val p1 = pointFactory.createPoint(posX, posY)
-                //val p2 = pointFactory.createPoint(e.x)
                 val action = FocusMeteringAction.Builder(p1, meteringMode)
-                    .setAutoCancelDuration(3, TimeUnit.SECONDS)
+                    .setAutoCancelDuration(FOCUS_AUTO_CANCEL_DEFAULT_DURATION, TimeUnit.SECONDS)
                     .build()
 
                 viewBinding.focusRing.apply {
@@ -970,14 +979,13 @@ class MainActivity : AppCompatActivity() {
                     y = posY - height / 2
                     visibility = View.VISIBLE
                 }
-
                 focusing = true
+
                 val result = camControl.startFocusAndMetering(action)
                 result.addListener({
                     //if (!result.get().isFocusSuccessful)
                     //    Toast.makeText(baseContext, "Unable to focus", Toast.LENGTH_SHORT).show()
-                    viewBinding.focusRing.visibility = View.INVISIBLE
-                    focusing = false
+                    finishFocus()
                 }, ContextCompat.getMainExecutor(baseContext))
             }
         }
