@@ -17,6 +17,8 @@
 - Camera UI
   - Use a single button for photo and video
 
+- Use string resources for UI stuff
+
 - Setting UI
   - Overflow menu
     - Info about gestures
