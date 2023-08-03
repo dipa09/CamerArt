@@ -62,12 +62,6 @@
             app:entryValues="@array/numbers"
             app:summary="Delay in seconds before cancelling focus" />
 
-        <SwitchPreferenceCompat
-            app:key="pref_lumus"
-            app:title="Lumus"
-            app:summary="Show average luminosity"
-            app:defaultValue="false" />
-
     </PreferenceCategory>
 
     <PreferenceCategory app:title="Video">
@@ -130,6 +124,18 @@
             app:summary="Use front and back camera simultaneously"
             app:defaultValue="false"
             app:enabled="false" />
+
+        <SwitchPreferenceCompat
+            app:key="pref_lumus"
+            app:title="Lumus"
+            app:summary="Show average luminosity"
+            app:defaultValue="false" />
+
+        <SwitchPreferenceCompat
+            app:key="pref_qrcode"
+            app:title="QR Code Scanner"
+            app:summary="Scan QR Codes"
+            app:defaultValue="false" />
 
     </PreferenceCategory>
 

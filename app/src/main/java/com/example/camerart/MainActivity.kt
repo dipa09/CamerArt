@@ -22,14 +22,21 @@ import androidx.camera.core.*
 import androidx.camera.extensions.ExtensionMode
 import androidx.camera.extensions.ExtensionsManager
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.mlkit.vision.MlKitAnalyzer
 import androidx.camera.video.*
 import androidx.camera.video.VideoCapture
+import androidx.camera.view.CameraController.COORDINATE_SYSTEM_VIEW_REFERENCED
+import androidx.camera.view.LifecycleCameraController
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.core.content.PermissionChecker
 import androidx.core.view.GestureDetectorCompat
 import androidx.preference.PreferenceManager
 import com.example.camerart.databinding.ActivityMainBinding
+import com.google.mlkit.vision.barcode.BarcodeScanner
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
+import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.common.Barcode
 import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.*
@@ -72,6 +79,7 @@ class MainActivity : AppCompatActivity() {
         const val MODE_VIDEO = 1
         const val MODE_LUMUS = 2
         const val MODE_MULTI_CAMERA = 3
+        const val MODE_QRCODE_SCANNER = 4
 
         const val FADING_MESSAGE_DEFAULT_DELAY = 1
         const val FOCUS_AUTO_CANCEL_DEFAULT_DURATION: Long = 3
@@ -90,6 +98,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var viewBinding: ActivityMainBinding
     private lateinit var cameraExecutor: ExecutorService
+    private lateinit var barcodeScanner: BarcodeScanner
 
     // Gesture stuff
     private lateinit var  commonDetector: GestureDetectorCompat
@@ -474,7 +483,7 @@ class MainActivity : AppCompatActivity() {
                         MODE_LUMUS
                     } else {
                         viewBinding.statsText.visibility = View.INVISIBLE
-                        MODE_CAPTURE
+                        currMode
                     }
 
                     if (newMode != currMode) {
@@ -537,6 +546,10 @@ class MainActivity : AppCompatActivity() {
 
                 "pref_multi_camera" -> {
                     changeCount = toggleMode(pref.value as Boolean, MODE_MULTI_CAMERA, changeCount)
+                }
+
+                "pref_qrcode" -> {
+                    changeCount = toggleMode(pref.value as Boolean, MODE_QRCODE_SCANNER, changeCount)
                 }
             }
         }
@@ -845,7 +858,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun startMultiCamera() {
         // TODO(davide): Multi camera support won't be available until CameraX 1.3...
-
         startNormalCamera()
     }
 
@@ -882,18 +894,59 @@ class MainActivity : AppCompatActivity() {
         return result
     }
 
+    private fun startQRScanner() {
+        val cameraController = LifecycleCameraController(baseContext)
+        val preview = viewBinding.viewFinder
+
+        val options = BarcodeScannerOptions.Builder()
+            .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
+            .build()
+        barcodeScanner = BarcodeScanning.getClient(options)
+
+        cameraController.setImageAnalysisAnalyzer(
+            ContextCompat.getMainExecutor(this),
+            MlKitAnalyzer(
+                listOf(barcodeScanner),
+                COORDINATE_SYSTEM_VIEW_REFERENCED,
+                ContextCompat.getMainExecutor(this)
+            ) { result: MlKitAnalyzer.Result? ->
+                val barcodes = result?.getValue(barcodeScanner)
+                if (barcodes == null || barcodes.size == 0 || barcodes.first() == null) {
+                    preview.overlay.clear()
+                    preview.setOnTouchListener { _, _ -> false } // nop
+                    return@MlKitAnalyzer
+                }
+
+                val qrCode = QrCode(barcodes[0])
+                val qrCodeDrawable = QrCodeDrawable(qrCode)
+
+                // TODO(davide): This overwrites the gesture detector...
+                preview.setOnTouchListener(qrCode.touchCallback)
+                preview.overlay.clear()
+                preview.overlay.add(qrCodeDrawable)
+            }
+        )
+
+        cameraController.bindToLifecycle(this)
+        preview.controller = cameraController
+    }
+
     private fun startCamera() {
         Log.d(TAG, "START CAMERA")
 
-        if (extensionMode == ExtensionMode.NONE || currMode == MODE_VIDEO) {
-            startNormalCamera()
-        } else if (currMode == MODE_MULTI_CAMERA) {
-            startMultiCamera()
-        } else {
-            if (!startCameraWithExtensions()) {
-                Toast.makeText(baseContext, "Extension ${extensionName(extensionMode)} is not supported on this device", Toast.LENGTH_SHORT).show()
+        //Log.d(TAG, "Current mode is $currMode")
+        if (currMode == MODE_CAPTURE || currMode == MODE_VIDEO) {
+            if (currMode == MODE_CAPTURE && extensionMode != ExtensionMode.NONE) {
+                startCameraWithExtensions()
+            } else {
                 startNormalCamera()
             }
+        } else if (currMode == MODE_MULTI_CAMERA) {
+            startMultiCamera()
+        } else if (currMode == MODE_QRCODE_SCANNER) {
+            startQRScanner()
+        } else {
+            assert(false)
         }
 
         Log.d(TAG, "START CAMERA ENDED")
