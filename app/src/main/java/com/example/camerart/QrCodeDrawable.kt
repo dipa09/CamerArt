@@ -37,6 +37,8 @@ class QrCodeDrawable(qrCode: QrCode) : Drawable() {
                 qrCode.boundingRect.bottom + contentTextPaint.textSize.toInt() + contentPadding),
             contentRectPaint
         )
+
+        // TODO(davide): Draw the text accordingly to phone orientation
         canvas.drawText(
             qrCode.content,
             (qrCode.boundingRect.left + contentPadding).toFloat(),

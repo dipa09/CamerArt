@@ -15,6 +15,7 @@ import android.provider.MediaStore
 import android.util.Log
 import android.view.*
 import android.webkit.MimeTypeMap
+import android.widget.SimpleAdapter.ViewBinder
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -77,7 +78,6 @@ class MainActivity : AppCompatActivity() {
 
         const val MODE_CAPTURE = 0
         const val MODE_VIDEO = 1
-        const val MODE_LUMUS = 2
         const val MODE_MULTI_CAMERA = 3
         const val MODE_QRCODE_SCANNER = 4
 
@@ -126,6 +126,7 @@ class MainActivity : AppCompatActivity() {
                                      FocusMeteringAction.FLAG_AE or
                                      FocusMeteringAction.FLAG_AWB)
     private var autoCancelDuration = FOCUS_AUTO_CANCEL_DEFAULT_DURATION
+    private var showLumus = false
 
     // Video
     private var audioEnabled: Boolean = true
@@ -478,18 +479,18 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 "pref_lumus" -> {
-                    val newMode = if (pref.value as Boolean) {
-                        viewBinding.statsText.visibility = View.VISIBLE
-                        MODE_LUMUS
-                    } else {
-                        viewBinding.statsText.visibility = View.INVISIBLE
-                        currMode
-                    }
+                    val newShowLumus = pref.value as Boolean
 
-                    if (newMode != currMode) {
-                        currMode = newMode
+                    if (newShowLumus != showLumus) {
+                        showLumus = newShowLumus
+                        currMode = MODE_CAPTURE
                         ++changeCount
                     }
+
+                    if (showLumus)
+                        viewBinding.statsText.visibility = View.VISIBLE
+                    else
+                        viewBinding.statsText.visibility = View.INVISIBLE
                 }
 
                 // TODO(davide): Temporary. The user shouldn't be aware of this
@@ -822,33 +823,29 @@ class MainActivity : AppCompatActivity() {
                         .build()
                     videoCapture = VideoCapture.withOutput(recorder)
                     cameraProvider.bindToLifecycle(this, selector, preview, videoCapture)
-                } else if (currMode == MODE_CAPTURE) {
-                    imageCapture = buildImageCapture()
-                    cameraProvider.bindToLifecycle(this, selector, preview, imageCapture)
                 } else {
+                    assert(currMode == MODE_CAPTURE)
                     imageCapture = buildImageCapture()
-                    val analysis = ImageAnalysis.Builder()
-                        //.setOutputImageFormat(OUTPUT_IMAGE_FORMAT_RGBA_8888)
-                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                        .build()
-                    analysis.setAnalyzer(cameraExecutor, ImageAnalysis.Analyzer { image ->
-                        val rotation = image.imageInfo.rotationDegrees
-                        val buffer = image.planes[0].buffer
-                        buffer.rewind()
-                        val data = ByteArray(buffer.remaining())
-                        buffer.get(data)
-                        val pixels = data.map { it.toInt() and 0xFF }
+                    if (showLumus) {
+                        val analysis = ImageAnalysis.Builder()
+                            //.setOutputImageFormat(OUTPUT_IMAGE_FORMAT_RGBA_8888)
+                            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                            .build()
 
-                        val luma = pixels.average()
-                        image.close()
-
-                        val lumaStr = String.format("%.2f", luma)
-                        runOnUiThread { viewBinding.statsText.text = "Lum: $lumaStr\nRot: $rotation°" }
-                        //Log.d(TAG, "Lumus: $luma")
-                    })
-                    cameraProvider.bindToLifecycle(this, selector, preview, imageCapture, analysis)
+                        analysis.setAnalyzer(cameraExecutor, ImageAnalysis.Analyzer { image ->
+                            val result = evalAvgLuminosityAndRotation(image)
+                            image.close()
+                            val lumStr = String.format("%.2f", result.luminosity)
+                            //Log.d(TAG, "rot ${result.rotation}, lum ${result.luminosity}")
+                            runOnUiThread {
+                                viewBinding.statsText.text = "Lum: $lumStr\nRot: ${result.rotation}°"
+                            }
+                        })
+                        cameraProvider.bindToLifecycle(this, selector, preview, imageCapture, analysis)
+                    } else {
+                        cameraProvider.bindToLifecycle(this, selector, preview, imageCapture)
+                    }
                 }
-
                 applySettingsToCurrentCamera(camera.cameraInfo, camera.cameraControl)
             } catch (e: Exception) {
                 Log.e(TAG, "Use case binding failed", e)

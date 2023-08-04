@@ -8,9 +8,11 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
+import android.view.View
 import androidx.camera.core.CameraInfo
 import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageProxy
 import androidx.camera.extensions.ExtensionMode
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -180,4 +182,14 @@ fun dumpCameraFeatures(packageManager: PackageManager) {
         val result = packageManager.hasSystemFeature(feature)
         Log.d("Camera Feature", "$feature -- $result")
     }
+}
+
+data class LumusInfo(val luminosity: Double, val rotation: Int)
+fun evalAvgLuminosityAndRotation(image: ImageProxy): LumusInfo {
+    val buffer = image.planes[0].buffer
+    buffer.rewind()
+    val data = ByteArray(buffer.remaining())
+    buffer.get(data)
+    val pixels = data.map { it.toInt() and 0xFF }
+    return LumusInfo(pixels.average(), image.imageInfo.rotationDegrees)
 }
