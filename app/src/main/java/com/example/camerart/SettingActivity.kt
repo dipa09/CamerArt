@@ -49,11 +49,13 @@ class SettingActivity : AppCompatActivity() {
             // NOTE(davide): Display only available qualities
             val prefVideoQuality: ListPreference? = findPreference("pref_video_quality")
             if (prefVideoQuality != null) {
-                supportedQualities = arguments?.getStringArray("supportedQualities")
-                supportedResolutions = arguments?.getStringArray("supportedResolutions")
-                if (supportedQualities != null) {
-                    prefVideoQuality.entryValues = supportedQualities
-                    prefVideoQuality.entries = supportedQualities
+                val qualities = arguments?.getStringArray("supportedQualities")
+                if (qualities != null) {
+                    prefVideoQuality.entryValues = qualities
+                    prefVideoQuality.entries = qualities
+
+                    supportedQualities = qualities
+                    supportedResolutions = initVideoResolutions(qualities)
                 }
 
                 prefVideoQuality.summaryProvider = Preference.SummaryProvider<ListPreference> { _ ->
@@ -119,13 +121,37 @@ class SettingActivity : AppCompatActivity() {
             }
         }
 
-        private fun lookupQualityResolutionSummary(qualityName: String?): String {
+        private fun initVideoResolutions(qualities: Array<String>): Array<String>  {
+            val resolutions = Array<String>(qualities.size){""}
+            for (i in qualities.indices)  {
+                val quality = qualities[i]
+
+                var prefix: String = ""
+                var p: Int = 0
+                when (quality)  {
+                    "SD" -> { p = 480 }
+                    "HD" -> { p = 720 }
+                    "FHD" -> { p = 1080; prefix = "Full " }
+                    "UHD" -> { p = 2160; prefix = "4K ultra " }
+                }
+
+                resolutions[i] = prefix + quality + " ${p}p"
+            }
+
+            return resolutions
+        }
+
+        private fun lookupQualityResolutionSummary(qualityName: String?): String  {
             var result = "Not selected"
-            if (qualityName != null && supportedQualities != null && supportedResolutions != null) {
-                assert(supportedResolutions!!.size == supportedQualities!!.size)
-                for (i in supportedQualities!!.indices) {
-                    if (qualityName == supportedQualities!![i]) {
-                        result = supportedResolutions!![i]
+
+            val resolutions = supportedResolutions
+            val qualities = supportedQualities
+            if (qualityName != null && resolutions != null && qualities != null)  {
+                assert(resolutions.size == qualities.size)
+
+                for (i in qualities.indices) {
+                    if (qualityName == qualities[i])  {
+                        result = resolutions[i]
                         break
                     }
                 }

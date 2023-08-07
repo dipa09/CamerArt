@@ -44,6 +44,7 @@ import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlin.collections.ArrayList
 import kotlin.collections.HashSet
 import kotlin.math.abs
 
@@ -287,49 +288,7 @@ class MainActivity : AppCompatActivity() {
         val camInfo = currCamInfo
         if (camInfo != null) {
             // TODO(davide): Do this only when the camera has changed. e.g. front/back
-            val qualities = QualitySelector.getSupportedQualities(camInfo)
-            val values = Array(qualities.size + 2){""}
-            val resolutionNames = Array(qualities.size + 2){""}
-            for (i in qualities.indices) {
-                val quality = qualities[i]
-                var prefix: String = ""
-                var p: Int
-
-                when (quality) {
-                    Quality.SD -> {
-                        prefix = "SD"
-                        p = 480
-                        values[i] = SupportedQuality.SD.name
-                    }
-                    Quality.HD -> {
-                        prefix = "HD"
-                        p = 720
-                        values[i] = SupportedQuality.HD.name
-                    }
-                    Quality.FHD -> {
-                        prefix = "Full HD"
-                        p = 1080
-                        values[i] = SupportedQuality.FHD.name
-                    }
-                    Quality.UHD -> {
-                        prefix = "4K ultra HD"
-                        p = 2160
-                        values[i] = SupportedQuality.UHD.name
-                    }
-                    else -> continue
-                }
-
-                val size = QualitySelector.getResolution(camInfo, quality)
-                resolutionNames[i] = prefix + " " + size.toString() + " (${p}p)"
-            }
-            values[values.size - 2] = "Highest"
-            values[values.size - 1] = "Lowest"
-            resolutionNames[resolutionNames.size - 2] = QualitySelector.getResolution(camInfo, Quality.HIGHEST).toString()
-            resolutionNames[resolutionNames.size - 1] = QualitySelector.getResolution(camInfo, Quality.LOWEST).toString()
-
-            intent.putExtra("supportedQualities", values)
-            intent.putExtra("supportedResolutions", resolutionNames)
-
+            intent.putExtra("supportedQualities", querySupportedVideoQualities(camInfo))
             intent.putExtra("exposureState", exposureStateToBundle(camInfo.exposureState))
         }
         intent.putExtra("supportedImageFormats", supportedMimes)
@@ -493,21 +452,13 @@ class MainActivity : AppCompatActivity() {
                         viewBinding.statsText.visibility = View.INVISIBLE
                 }
 
-                // TODO(davide): Temporary. The user shouldn't be aware of this
+                // TODO(davide): Temporary UI
                 "pref_use_video_temp" -> {
                     changeCount = toggleMode(pref.value as Boolean, MODE_VIDEO, changeCount)
                 }
 
                 "pref_video_quality" -> {
-                    val newVideoQuality = when (pref.value) {
-                        "SD" -> Quality.SD
-                        "HD" -> Quality.HD
-                        "FHD" -> Quality.FHD
-                        "UHD" -> Quality.UHD
-                        "Lowest" -> Quality.LOWEST
-                        else -> Quality.HIGHEST
-                    }
-
+                    val newVideoQuality = videoQualityFromName(pref.value as String)
                     if (newVideoQuality != videoQuality) {
                         videoQuality = newVideoQuality
                         ++changeCount

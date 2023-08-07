@@ -14,6 +14,7 @@ import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageProxy
 import androidx.camera.extensions.ExtensionMode
+import androidx.camera.video.Quality
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.URL
@@ -192,4 +193,24 @@ fun evalAvgLuminosityAndRotation(image: ImageProxy): LumusInfo {
     buffer.get(data)
     val pixels = data.map { it.toInt() and 0xFF }
     return LumusInfo(pixels.average(), image.imageInfo.rotationDegrees)
+}
+
+fun videoQualityName(quality: Quality): String {
+    return when (quality) {
+        Quality.SD -> "SD"
+        Quality.HD -> "HD"
+        Quality.FHD -> "FHD"
+        Quality.UHD -> "UHD"
+        else -> ""
+    }
+}
+
+fun videoQualityFromName(name: String): Quality {
+    return when (name) {
+        "SD" -> Quality.SD
+        "HD" -> Quality.HD
+        "FHD" -> Quality.FHD
+        "UHD" -> Quality.UHD
+        else -> Quality.HIGHEST
+    }
 }
