@@ -1,6 +1,7 @@
 package com.example.camerart
 
 import android.app.AlertDialog
+import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Context
 import android.content.DialogInterface
@@ -8,18 +9,19 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
-import android.view.View
 import androidx.camera.core.CameraInfo
 import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageProxy
 import androidx.camera.extensions.ExtensionMode
+import androidx.camera.video.MediaStoreOutputOptions
 import androidx.camera.video.Quality
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.URL
+import java.text.SimpleDateFormat
+import java.util.*
 import javax.net.ssl.HttpsURLConnection
-
 
 fun makeContentValues(displayName: String, mimeType: String): ContentValues {
     val values = ContentValues().apply {
@@ -32,6 +34,23 @@ fun makeContentValues(displayName: String, mimeType: String): ContentValues {
     }
 
     return values
+}
+
+fun buildVideoOptions(filenameFormat: String, contentResolver: ContentResolver): MediaStoreOutputOptions {
+    val name = SimpleDateFormat(filenameFormat, Locale.US).format(System.currentTimeMillis())
+
+    val contentValues = ContentValues().apply {
+        put(MediaStore.MediaColumns.DISPLAY_NAME, name)
+        put(MediaStore.MediaColumns.MIME_TYPE, "video/mp4")
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
+            put(MediaStore.Video.Media.RELATIVE_PATH, "Movies/CameraX-Video")
+        }
+    }
+
+    return MediaStoreOutputOptions
+        .Builder(contentResolver, MediaStore.Video.Media.EXTERNAL_CONTENT_URI)
+        .setContentValues(contentValues)
+        .build()
 }
 
 fun humanizeTime(timeNanos: Long): String {

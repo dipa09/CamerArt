@@ -240,8 +240,7 @@ class MainActivity : AppCompatActivity() {
             requestPermissions()
         }
 
-        viewBinding.imageCaptureButton.setOnClickListener { takePhoto() }
-        viewBinding.videoCaptureButton.setOnClickListener { captureVideo() }
+        viewBinding.photoButton.setOnClickListener { takePhotoOrVideo() }
         viewBinding.muteButton.setOnClickListener { toggleAudio() }
         viewBinding.settingsButton.setOnClickListener { launchSetting() }
         viewBinding.playButton.setOnClickListener { controlVideoRecording() }
@@ -633,7 +632,7 @@ class MainActivity : AppCompatActivity() {
     private fun captureVideo() {
         val videoCapture = this.videoCapture ?: return
 
-        viewBinding.videoCaptureButton.isEnabled = false
+        viewBinding.photoButton.isEnabled = false
         if (stopRecording())
             return
 
@@ -641,24 +640,10 @@ class MainActivity : AppCompatActivity() {
         // recording, but the method can't be resolved...
         viewBinding.muteButton.visibility = View.INVISIBLE
 
-        // create and start a new recording session
-        val name = SimpleDateFormat(FILENAME_FORMAT, Locale.US).format(System.currentTimeMillis())
-        val contentValues = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, name)
-            put(MediaStore.MediaColumns.MIME_TYPE, "video/mp4")
-            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
-                put(MediaStore.Video.Media.RELATIVE_PATH, "Movies/CameraX-Video")
-            }
-        }
-
         var recDurationNanos = Long.MAX_VALUE
 
-        val mediaStoreOutputOptions = MediaStoreOutputOptions
-            .Builder(contentResolver, MediaStore.Video.Media.EXTERNAL_CONTENT_URI)
-            .setContentValues(contentValues)
-            .build()
         recording = videoCapture.output
-            .prepareRecording(this, mediaStoreOutputOptions)
+            .prepareRecording(this, buildVideoOptions(FILENAME_FORMAT, contentResolver))
             .apply {
                 if (PermissionChecker.checkSelfPermission(this@MainActivity,
                         Manifest.permission.RECORD_AUDIO) ==
@@ -676,8 +661,7 @@ class MainActivity : AppCompatActivity() {
             .start(ContextCompat.getMainExecutor(this)) { recordEvent ->
                 when (recordEvent) {
                     is VideoRecordEvent.Start -> {
-                        viewBinding.videoCaptureButton.apply {
-                            text = getString(R.string.stop_capture)
+                        viewBinding.photoButton.apply {
                             isEnabled = true
                         }
                     }
@@ -692,14 +676,12 @@ class MainActivity : AppCompatActivity() {
                             recording = null
                             Log.e(TAG, "Video capture ends with error: " + "${recordEvent.error}")
                         }
-                        viewBinding.videoCaptureButton.apply {
-                            text = getString(R.string.start_capture)
+                        viewBinding.photoButton.apply {
                             isEnabled = true
                         }
                     }
 
                     is VideoRecordEvent.Status -> {
-                        // TODO(davide): Display Location info as well?
                         val stats = recordEvent.recordingStats
                         if (stats.recordedDurationNanos < recDurationNanos) {
                             if (showVideoStats) {
@@ -724,6 +706,13 @@ class MainActivity : AppCompatActivity() {
 
         viewBinding.playButton.visibility = View.VISIBLE
         playing = true
+    }
+
+    private fun takePhotoOrVideo() {
+        if (currMode == MODE_VIDEO)
+            captureVideo()
+        else
+            takePhoto()
     }
 
     private fun buildSelector(): CameraSelector {

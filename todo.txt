@@ -12,10 +12,6 @@
 - Setting Fragment
   - Set output folder for saving photos and videos?
   - Use user locale for file names
-  - Search bar?
-
-- Camera UI
-  - Use a single button for photo and video
 
 - Use string resources for UI stuff
 
