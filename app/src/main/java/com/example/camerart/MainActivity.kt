@@ -15,7 +15,6 @@ import android.provider.MediaStore
 import android.util.Log
 import android.view.*
 import android.webkit.MimeTypeMap
-import android.widget.SimpleAdapter.ViewBinder
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -326,6 +325,30 @@ class MainActivity : AppCompatActivity() {
         return newChangeCount
     }
 
+    private fun flashModeFromPreference(prefValue: String): Int {
+        return when (prefValue) {
+            resources.getString(R.string.flash_value_on) -> ImageCapture.FLASH_MODE_ON
+            resources.getString(R.string.flash_value_off) -> ImageCapture.FLASH_MODE_OFF
+            else -> ImageCapture.FLASH_MODE_AUTO
+        }
+    }
+
+    private fun captureModeFromPreference(name: String, camInfo: CameraInfo?): Int {
+        var mode = ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
+        if (name == resources.getString(R.string.capture_value_quality)) {
+            mode = ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY
+        }
+/*
+    else if (name == "zero" && camInfo != null &&
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+        camInfo.isZslSupported) {
+        mode = ImageCapture.CAPTURE_MODE_ZERO_SHUTTER_LAG
+    }
+*/
+
+        return mode
+    }
+
     // NOTE(davide): For some reason, sometimes you need to delete app's data if you edit
     // a previous preference from root_preferences.xml or arrays.xml, otherwise you get
     // a random exception.
@@ -338,21 +361,16 @@ class MainActivity : AppCompatActivity() {
             //Log.i(TAG, "preference ${pref.key}, ${pref.value}")
 
             when (pref.key) {
-                "pref_flash" -> {
-                    val newFlashMode = when(pref.value) {
-                        "on" -> ImageCapture.FLASH_MODE_ON
-                        "off" -> ImageCapture.FLASH_MODE_OFF
-                        else -> ImageCapture.FLASH_MODE_AUTO
-                    }
-
+                resources.getString(R.string.flash_key) -> {
+                    val newFlashMode = flashModeFromPreference(pref.value as String)
                     if (newFlashMode != flashMode) {
                         flashMode = newFlashMode
                         ++changeCount
                     }
                 }
 
-                "pref_capture" -> {
-                    newCaptureMode = captureModeFromName(pref.value as String, currCamInfo)
+                resources.getString(R.string.capture_key) -> {
+                    newCaptureMode = captureModeFromPreference(pref.value as String, currCamInfo)
                     if (newCaptureMode != captureMode) {
                         captureMode = newCaptureMode
                         ++changeCount
@@ -464,43 +482,18 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                "pref_video_duration" -> {
-                    var duration = pref.value as String
-                    var factor = 1
-                    if (!duration.last().isDigit()) {
-                        factor = when (duration.last().lowercaseChar()) {
-                            'm' -> 60
-                            'h' -> 60*60
-                            else -> 1
-                        }
-                        duration = duration.substring(0, duration.length - 1)
-                    }
-
-                    videoDuration = try {
-                        duration.toInt()*factor
-                    } catch (exc: NumberFormatException) {
-                        0
-                    }
-                }
-
-                "pref_show_video_stats" -> {
-                    showVideoStats = (pref.value as Boolean)
-                }
-
-                "pref_exposure" -> {
-                    exposureCompensationIndex = pref.value as Int
-                }
-
-                "pref_countdown" -> {
-                    delayBeforeActionSeconds = pref.value as Int
-                }
+                "pref_video_duration"   -> { videoDuration = stringToIntOr0(pref.value as String) }
+                "pref_show_video_stats" -> { showVideoStats = (pref.value as Boolean) }
+                "pref_exposure"         -> { exposureCompensationIndex = pref.value as Int }
+                "pref_countdown"        -> { delayBeforeActionSeconds = pref.value as Int }
 
                 "pref_multi_camera" -> {
                     changeCount = toggleMode(pref.value as Boolean, MODE_MULTI_CAMERA, changeCount)
                 }
 
                 "pref_qrcode" -> {
-                    changeCount = toggleMode(pref.value as Boolean, MODE_QRCODE_SCANNER, changeCount)
+                    //changeCount = toggleMode(pref.value as Boolean, MODE_QRCODE_SCANNER, changeCount)
+                    currMode = MODE_CAPTURE
                 }
             }
         }
@@ -636,8 +629,6 @@ class MainActivity : AppCompatActivity() {
         if (stopRecording())
             return
 
-        // NOTE(davide): The docs say that Recording.mute can be used to mute/unmute a running
-        // recording, but the method can't be resolved...
         viewBinding.muteButton.visibility = View.INVISIBLE
 
         var recDurationNanos = Long.MAX_VALUE
@@ -658,56 +649,55 @@ class MainActivity : AppCompatActivity() {
                     countdown(delayBeforeActionSeconds)
                 }
             }
-            .start(ContextCompat.getMainExecutor(this)) { recordEvent ->
-                when (recordEvent) {
-                    is VideoRecordEvent.Start -> {
-                        viewBinding.photoButton.apply {
-                            isEnabled = true
-                        }
-                    }
-
-                    is VideoRecordEvent.Finalize -> {
-                        if (!recordEvent.hasError()) {
-                            val msg = "Video capture succeeded: " + "${recordEvent.outputResults.outputUri}"
-                            Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
-                            Log.d(TAG, msg)
-                        } else {
-                            recording?.close()
-                            recording = null
-                            Log.e(TAG, "Video capture ends with error: " + "${recordEvent.error}")
-                        }
-                        viewBinding.photoButton.apply {
-                            isEnabled = true
-                        }
-                    }
-
-                    is VideoRecordEvent.Status -> {
-                        val stats = recordEvent.recordingStats
-                        if (stats.recordedDurationNanos < recDurationNanos) {
-                            if (showVideoStats) {
-                                val audioDesc = when (stats.audioStats.audioState) {
-                                    AudioStats.AUDIO_STATE_ACTIVE -> "On"
-                                    AudioStats.AUDIO_STATE_DISABLED -> "Off"
-                                    AudioStats.AUDIO_STATE_SOURCE_SILENCED -> "Silenced"
-                                    else -> "Bad"
-                                }
-
-                                viewBinding.statsText.text =
-                                    "Time: ${humanizeTime(stats.recordedDurationNanos)}\n" +
-                                            "Size: ${humanizeSize(stats.numBytesRecorded)}\n" +
-                                            "Audio: $audioDesc"
-                            }
-                        } else {
-                            stopRecording()
-                        }
-                    }
-                }
-            }
+            .start(ContextCompat.getMainExecutor(this)) { recordEvent -> handleRecordEvent(recordEvent, recDurationNanos) }
 
         viewBinding.playButton.visibility = View.VISIBLE
         playing = true
     }
 
+    private fun handleRecordEvent(event: VideoRecordEvent, recDurationNanos: Long) {
+        when (event) {
+            is VideoRecordEvent.Start -> {
+                viewBinding.photoButton.isEnabled = true
+            }
+
+            is VideoRecordEvent.Finalize -> {
+                if (!event.hasError()) {
+                    val msg = R.string.video_saved_success.toString() + "${event.outputResults.outputUri}"
+                    Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
+                    Log.d(TAG, msg)
+                } else {
+                    recording?.close()
+                    recording = null
+                    Log.e(TAG, R.string.video_saved_failed.toString() + "${event.error}")
+                }
+                viewBinding.photoButton.apply {
+                    isEnabled = true
+                }
+            }
+
+            is VideoRecordEvent.Status -> {
+                val stats = event.recordingStats
+                if (stats.recordedDurationNanos < recDurationNanos) {
+                    if (showVideoStats) {
+                        val audioDesc = when (stats.audioStats.audioState) {
+                            AudioStats.AUDIO_STATE_ACTIVE -> "On"
+                            AudioStats.AUDIO_STATE_DISABLED -> "Off"
+                            AudioStats.AUDIO_STATE_SOURCE_SILENCED -> "Silenced"
+                            else -> "Bad"
+                        }
+
+                        viewBinding.statsText.text =
+                            "Time: ${humanizeTime(stats.recordedDurationNanos)}\n" +
+                                    "Size: ${humanizeSize(stats.numBytesRecorded)}\n" +
+                                    "Audio: $audioDesc"
+                    }
+                } else {
+                    stopRecording()
+                }
+            }
+        }
+    }
     private fun takePhotoOrVideo() {
         if (currMode == MODE_VIDEO)
             captureVideo()

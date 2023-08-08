@@ -106,22 +106,6 @@ fun extensionFromName(name: String): Int {
     return mode
 }
 
-fun captureModeFromName(name: String, camInfo: CameraInfo?): Int {
-    var mode = ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
-
-    if (name == "quality") {
-        mode = ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY
-    }
-    // TODO(davide): Even with the suggested annotation it keeps complaining
-    /*else if (name == "zero" && camInfo != null &&
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
-        camInfo.isZslSupported) {
-        mode = ImageCapture.CAPTURE_MODE_ZERO_SHUTTER_LAG
-    }*/
-
-    return mode
-}
-
 fun meteringModeFromName(name: CharSequence): Int {
     var mode = 0
     when (name) {
@@ -231,5 +215,13 @@ fun videoQualityFromName(name: String): Quality {
         "FHD" -> Quality.FHD
         "UHD" -> Quality.UHD
         else -> Quality.HIGHEST
+    }
+}
+
+fun stringToIntOr0(s: String): Int {
+    return try {
+        s.toInt()
+    } catch (exc: NumberFormatException) {
+        0
     }
 }

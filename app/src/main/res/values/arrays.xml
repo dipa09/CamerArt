@@ -1,24 +1,24 @@
 <resources>
     <string-array name="flash_names">
-        <item>Always Off</item>
-        <item>Always On</item>
-        <item>On dark environments</item>
+        <item>@string/flash_always_off</item>
+        <item>@string/flash_always_on</item>
+        <item>@string/flash_on_dark_env</item>
     </string-array>
     <string-array name="flash_values">
-        <item>off</item>
-        <item>on</item>
-        <item>auto</item>
+        <item>@string/flash_value_off</item>
+        <item>@string/flash_value_on</item>
+        <item>@string/flash_value_auto</item>
     </string-array>
 
     <string-array name="capture_names">
-        <item>Minimize latency</item>
-        <item>Maximize quality</item>
-        <item>Zero short lag</item>
+        <item>@string/minimize_latency</item>
+        <item>@string/maximize_quality</item>
+        <item>@string/zero_lag</item>
     </string-array>
     <string-array name="capture_values">
         <item>@string/capture_value_latency</item>
         <item>@string/capture_value_quality</item>
-        <item>zero</item>
+        <item>@string/capture_value_zero</item>
     </string-array>
 
     <string-array name="rotation_names">

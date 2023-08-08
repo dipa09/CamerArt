@@ -1,6 +1,23 @@
 <resources>
     <string name="app_name">CamerArt</string>
 
-    <string name="capture_value_latency">latenza</string>
-    <string name="capture_value_quality">qualità</string>
+    <string name="flash">Torcia</string>
+    <string name="flash_always_off">Sempre spenta</string>
+    <string name="flash_always_on">Sempre accessa</string>
+    <string name="flash_on_dark_env">In ambienti poco luminosi</string>
+
+    <string name="capture">Modalità</string>
+    <string name="minimize_latency">Minima latenza</string>
+    <string name="maximize_quality">Massima qualità</string>
+    <string name="zero_lag">Ancora meno latenza</string>
+
+    <string name="jpeg_quality">Qualità Compressione JPEG</string>
+
+    <string name="rotation">Forza Rotazione</string>
+
+    <string name="settings">Opzioni</string>
+
+    <string name="video_saved_success">Video salvato correttamente in </string>
+    <string name="video_saved_failed">Errore durante la ripresa video: </string>
+
 </resources>

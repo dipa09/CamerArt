@@ -6,7 +6,10 @@ import android.os.Bundle
 import android.util.Log
 import androidx.camera.core.CameraInfo
 import androidx.camera.core.ExposureState
+import androidx.camera.core.ImageCapture
 import androidx.camera.video.Recorder
+
+
 
 // NOTE(davide): The "recommended" way is to use Parcel, but it requires API level 33 which is to
 // high for our target.

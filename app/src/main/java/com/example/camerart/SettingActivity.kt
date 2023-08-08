@@ -28,19 +28,19 @@ class SettingActivity : AppCompatActivity() {
             else
                 CameraFeatures(false, false, false)
 
-            enablePreference("pref_flash", features.hasFlash)
+            enablePreference(resources.getString(R.string.flash_key), features.hasFlash)
             enablePreference("pref_multi_camera", features.hasMulti)
 
             // NOTE(davide): Keep the UI consistent since these two are correlated
-            val prefCapture: ListPreference? = findPreference("pref_capture")
-            val prefJpegQuality: SeekBarPreference? = findPreference("pref_jpeg_quality")
+            val prefCapture: ListPreference? = findPreference(resources.getString(R.string.capture_key))
+            val prefJpegQuality: SeekBarPreference? = findPreference(resources.getString(R.string.jpeg_key))
             if (prefCapture != null && prefJpegQuality != null) {
                 prefCapture.setOnPreferenceChangeListener { _, newValue ->
-                    val mode: String = newValue as String
-                    when (mode) {
-                        resources.getString(R.string.capture_value_latency) -> prefJpegQuality.value = MainActivity.JPEG_QUALITY_LATENCY
-                        resources.getString(R.string.capture_value_quality) -> prefJpegQuality.value = MainActivity.JPEG_QUALITY_MAX
-                    }
+                    val capMode = newValue as String
+                    prefJpegQuality.value = if (capMode == resources.getString(R.string.capture_value_quality))
+                        MainActivity.JPEG_QUALITY_MAX
+                    else
+                        MainActivity.JPEG_QUALITY_LATENCY
 
                     true
                 }
@@ -107,14 +107,14 @@ class SettingActivity : AppCompatActivity() {
             val prefVideoDuration: EditTextPreference? = findPreference("pref_video_duration")
             if (prefVideoDuration != null) {
                 prefVideoDuration.setOnPreferenceChangeListener { _, newValue ->
-                    var valid = false
                     val duration = newValue as String
-                    val iter = duration.iterator()
-                    for (ch in iter) {
-                        valid = (ch.isDigit() ||
-                                (iter.hasNext() && (ch.lowercaseChar() == 's' || ch.lowercaseChar() == 'm' || ch.lowercaseChar() == 'h')))
-                        if (!valid)
-                            break
+                    var valid = (duration.first() != '0')
+                    if (valid) {
+                        for (ch in duration.iterator()) {
+                            valid = ch.isDigit()
+                            if (!valid)
+                                break
+                        }
                     }
                     valid
                 }
