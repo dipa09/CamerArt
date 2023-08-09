@@ -106,17 +106,6 @@ fun extensionFromName(name: String): Int {
     return mode
 }
 
-fun meteringModeFromName(name: CharSequence): Int {
-    var mode = 0
-    when (name) {
-        "Auto Focus" -> mode = FocusMeteringAction.FLAG_AF
-        "Auto Exposure" -> mode = FocusMeteringAction.FLAG_AE
-        "Auto White Balance" -> mode = FocusMeteringAction.FLAG_AWB
-    }
-
-    return mode
-}
-
 fun describeMeteringMode(mode: Int): String {
     val sb = StringBuilder()
     if ((mode and FocusMeteringAction.FLAG_AE) != 0)

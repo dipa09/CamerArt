@@ -58,9 +58,14 @@
     </string-array>
 
     <string-array name="metering_modes">
-        <item>Auto Focus</item>
-        <item>Auto Exposure</item>
-        <item>Auto White Balance</item>
+        <item>@string/metering_mode_auto_focus</item>
+        <item>@string/metering_mode_auto_exposure</item>
+        <item>@string/metering_mode_auto_white_balance</item>
+    </string-array>
+    <string-array name="metering_mode_values">
+        <item>@string/metering_mode_value_auto_focus</item>
+        <item>@string/metering_mode_value_auto_exposure</item>
+        <item>@string/metering_mode_value_auto_white_balance</item>
     </string-array>
 
     <string-array name="numbers">

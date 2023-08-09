@@ -20,12 +20,26 @@
     <string name="maximize_quality">Maximize quality</string>
     <string name="zero_lag">Even less latency</string>
 
-    <string name="jpeg_key" translatable="false">jpeg</string>
+    <string name="jpeg_quality_key" translatable="false">jpeg</string>
     <string name="jpeg_quality">JPEG Compression Quality</string>
 
     <string name="rotation_key" translatable="false">rotation</string>
     <string name="rotation">Force Rotation</string>
 
+    <string name="image_fmt_key" translatable="false">imgfmt</string>
+    <string name="image_fmt">Format</string>
+
+    <string name="extension_key" translatable="false">exts</string>
+    <string name="extension">Extension</string>
+
+    <string name="metering_mode_key" translatable="false">metermode</string>
+    <string name="metering_mode_value_auto_focus" translatable="false">focus</string>
+    <string name="metering_mode_value_auto_exposure" translatable="false">exposure</string>
+    <string name="metering_mode_value_auto_white_balance" translatable="false">whitebalance</string>
+    <string name="metering_mode">Metering Mode</string>
+    <string name="metering_mode_auto_focus">Auto Focus</string>
+    <string name="metering_mode_auto_exposure">Auto Exposure</string>
+    <string name="metering_mode_auto_white_balance">Auto White Balance</string>
 
     <string name="settings">Settings</string>
 

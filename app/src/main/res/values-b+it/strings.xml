@@ -15,6 +15,15 @@
 
     <string name="rotation">Forza Rotazione</string>
 
+    <string name="image_fmt">Formato</string>
+
+    <string name="extension">Estensioni</string>
+
+    <string name="metering_mode">Metering</string>
+    <string name="metering_mode_auto_focus">Auto Focus</string>
+    <string name="metering_mode_auto_exposure">Auto Esposizione</string>
+    <string name="metering_mode_auto_white_balance">Bilanciamento Bianco</string>
+
     <string name="settings">Opzioni</string>
 
     <string name="video_saved_success">Video salvato correttamente in </string>

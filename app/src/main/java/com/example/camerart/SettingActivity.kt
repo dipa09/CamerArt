@@ -1,7 +1,9 @@
 package com.example.camerart
 
+import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.webkit.MimeTypeMap
 import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
 import androidx.preference.Preference
@@ -33,7 +35,7 @@ class SettingActivity : AppCompatActivity() {
 
             // NOTE(davide): Keep the UI consistent since these two are correlated
             val prefCapture: ListPreference? = findPreference(resources.getString(R.string.capture_key))
-            val prefJpegQuality: SeekBarPreference? = findPreference(resources.getString(R.string.jpeg_key))
+            val prefJpegQuality: SeekBarPreference? = findPreference(resources.getString(R.string.jpeg_quality_key))
             if (prefCapture != null && prefJpegQuality != null) {
                 prefCapture.setOnPreferenceChangeListener { _, newValue ->
                     val capMode = newValue as String
@@ -63,21 +65,12 @@ class SettingActivity : AppCompatActivity() {
                 }
             }
 
-            val prefImageFormat: ListPreference? = findPreference("pref_image_format")
+            val prefImageFormat: ListPreference? =
+                findPreference(resources.getString(R.string.image_fmt_key))
             if (prefImageFormat != null) {
-                val formats = arguments?.getIntArray("supportedImageFormats")
-                if (formats != null) {
-                    val names = Array<CharSequence>(formats.size) {""}
-
-                    val mimes = MainActivity.Mime.values()
-                    for (i in formats.indices) {
-                        names[i] = mimes[i].name
-                    }
-
-                    prefImageFormat.entryValues = names
-                    prefImageFormat.entries = names
-                }
-
+                val availMimes = getAvailableMimes()
+                prefImageFormat.entryValues = availMimes
+                prefImageFormat.entries = availMimes
                 prefImageFormat.summaryProvider = Preference.SummaryProvider<ListPreference> { _ ->
                     val summary = prefImageFormat.value ?: "Not Selected"
                     summary
@@ -173,4 +166,19 @@ class SettingActivity : AppCompatActivity() {
             .replace(android.R.id.content, frag)
             .commit()
     }
+}
+
+fun getAvailableMimes(): Array<CharSequence> {
+    val availMimes = ArrayList<CharSequence>(3)
+
+    val mimeMap = MimeTypeMap.getSingleton()
+    if (mimeMap.hasMimeType(MainActivity.MIME_TYPE_JPEG))
+        availMimes.add(MainActivity.MIME_TYPE_JPEG)
+    if (mimeMap.hasMimeType(MainActivity.MIME_TYPE_PNG))
+        availMimes.add(MainActivity.MIME_TYPE_PNG)
+    if (Build.VERSION.SDK_INT >= MainActivity.MIN_VERSION_FOR_WEBP &&
+            mimeMap.hasMimeType(MainActivity.MIME_TYPE_WEBP))
+        availMimes.add(MainActivity.MIME_TYPE_WEBP)
+
+    return availMimes.toTypedArray()
 }

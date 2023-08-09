@@ -73,6 +73,7 @@ class MainActivity : AppCompatActivity() {
         const val MIME_TYPE_JPEG = "image/jpeg"
         const val MIME_TYPE_PNG  = "image/png"
         const val MIME_TYPE_WEBP = "image/webp"
+        const val MIN_VERSION_FOR_WEBP = Build.VERSION_CODES.R
 
         private const val ON_FIRST_RUN = "onfirstrun"
 
@@ -85,16 +86,6 @@ class MainActivity : AppCompatActivity() {
         const val FOCUS_AUTO_CANCEL_DEFAULT_DURATION: Long = 3
     }
     enum class SupportedQuality { NONE, SD, HD, FHD, UHD, COUNT }
-
-    enum class Mime(private val mime: String) {
-        JPEG(MIME_TYPE_JPEG),
-        PNG(MIME_TYPE_PNG),
-        WEBP(MIME_TYPE_WEBP),
-
-        COUNT("");
-
-        override fun toString(): String { return mime }
-    }
 
     private lateinit var viewBinding: ActivityMainBinding
     private lateinit var cameraExecutor: ExecutorService
@@ -138,8 +129,7 @@ class MainActivity : AppCompatActivity() {
     // Preview
     private var scaleType: PreviewView.ScaleType = PreviewView.ScaleType.FIT_CENTER
 
-    private var supportedMimes = IntArray(1){Mime.JPEG.ordinal}
-    private var requestedFormat: Mime = Mime.JPEG
+    private var requestedFormat: String = MIME_TYPE_JPEG
     private var exposureCompensationIndex: Int = 0
     private var delayBeforeActionSeconds: Int = 0
 
@@ -205,7 +195,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun initialize() {
         firstRunCheck()
-        getAvailableMimes()
+        //getAvailableMimes()
         loadPreferences(true)
         startCamera()
     }
@@ -285,29 +275,12 @@ class MainActivity : AppCompatActivity() {
 
         val camInfo = currCamInfo
         if (camInfo != null) {
-            // TODO(davide): Do this only when the camera has changed. e.g. front/back
             intent.putExtra("supportedQualities", querySupportedVideoQualities(camInfo))
             intent.putExtra("exposureState", exposureStateToBundle(camInfo.exposureState))
         }
-        intent.putExtra("supportedImageFormats", supportedMimes)
         intent.putExtra("features", cameraFeaturesToBundle(cameraFeatures))
 
         this.startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this).toBundle())
-    }
-
-    private fun getAvailableMimes() {
-        val availMimes = ArrayList<Int>(Mime.COUNT.ordinal)
-
-        // TODO(davide): Check API level for WEBP
-        val mimes = Mime.values()
-        for (i in 0 until Mime.COUNT.ordinal) {
-            val mime = mimes[i].toString()
-            if (MimeTypeMap.getSingleton().hasMimeType(mime))
-                availMimes.add(i)
-        }
-
-        assert(availMimes.size > 0)
-        supportedMimes = availMimes.toIntArray()
     }
 
     private fun toggleMode(prefValue: Boolean, newState: Int, changeCount: Int): Int {
@@ -337,16 +310,25 @@ class MainActivity : AppCompatActivity() {
         var mode = ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
         if (name == resources.getString(R.string.capture_value_quality)) {
             mode = ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY
-        }
-/*
-    else if (name == "zero" && camInfo != null &&
+        } /* else if (name == "zero" && camInfo != null &&
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
         camInfo.isZslSupported) {
         mode = ImageCapture.CAPTURE_MODE_ZERO_SHUTTER_LAG
-    }
-*/
+    }*/
 
         return mode
+    }
+
+    fun meteringModeFromPreference(name: CharSequence): Int {
+        return when (name) {
+            resources.getString(R.string.metering_mode_value_auto_focus) ->
+                FocusMeteringAction.FLAG_AF
+            resources.getString(R.string.metering_mode_value_auto_exposure) ->
+                FocusMeteringAction.FLAG_AE
+            resources.getString(R.string.metering_mode_value_auto_white_balance) ->
+                FocusMeteringAction.FLAG_AWB
+            else -> 0
+        }
     }
 
     // NOTE(davide): For some reason, sometimes you need to delete app's data if you edit
@@ -377,15 +359,13 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                "pref_image_format" -> {
-                    requestedFormat = try {
-                        enumValueOf(pref.value as String)
-                    } catch (ecx: IllegalArgumentException) {
-                        Mime.JPEG
-                    }
+                resources.getString(R.string.image_fmt_key) -> {
+                    requestedFormat = pref.value as String
+                    if (requestedFormat.isEmpty())
+                        requestedFormat = MIME_TYPE_JPEG
                 }
 
-                "pref_jpeg_quality" -> {
+                resources.getString(R.string.jpeg_quality_key) -> {
                     val newJpegQuality = pref.value as Int
 
                     if (newJpegQuality != jpegQuality) {
@@ -394,7 +374,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                "pref_rotation" -> {
+                resources.getString(R.string.rotation_key) -> {
                     val newTargetRotation = when (pref.value) {
                         "0" -> Surface.ROTATION_0
                         "90" -> Surface.ROTATION_90
@@ -409,7 +389,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                "pref_extension" -> {
+                resources.getString(R.string.extension_key) -> {
                     val newExtensionMode = extensionFromName(pref.value as String)
 
                     if (newExtensionMode != extensionMode) {
@@ -432,12 +412,12 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                "pref_metering_mode" -> {
+                resources.getString(R.string.metering_mode_key) -> {
                     //Log.d("YYY", "${pref.value}")
                     try {
                         var newMeteringMode = 0
                         for (meterName in pref.value as HashSet<String>) {
-                            newMeteringMode = newMeteringMode or meteringModeFromName(meterName)
+                            newMeteringMode = newMeteringMode or meteringModeFromPreference(meterName)
                         }
 
                         if (newMeteringMode != meteringMode) {
@@ -522,8 +502,8 @@ class MainActivity : AppCompatActivity() {
         val imageCapture = imageCapture ?: return
 
         val name = SimpleDateFormat(FILENAME_FORMAT, Locale.US).format(System.currentTimeMillis())
-        if (requestedFormat != Mime.JPEG && extensionMode == ExtensionMode.NONE) {
-            val contentValues = makeContentValues(name, requestedFormat.toString())
+        if (requestedFormat != MIME_TYPE_JPEG && extensionMode == ExtensionMode.NONE) {
+            val contentValues = makeContentValues(name, requestedFormat)
             // TODO(davide): Launch another executor for png, since it's very slow
             imageCapture.takePicture(
                 ContextCompat.getMainExecutor(this),

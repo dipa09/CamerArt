@@ -19,7 +19,7 @@
             app:defaultValue="latency" />
 
         <SeekBarPreference
-            app:key="@string/jpeg_key"
+            app:key="@string/jpeg_quality_key"
             app:title="@string/jpeg_quality"
             app:min="1"
             app:showSeekBarValue="true"
@@ -34,26 +34,26 @@
             app:defaultValue="0" />
 
         <ListPreference
-            app:key="pref_image_format"
-            app:title="Format"
+            app:key="@string/image_fmt_key"
+            app:title="@string/image_fmt"
             app:entries="@array/empty"
             app:entryValues="@array/empty"
             app:useSimpleSummaryProvider="false" />
 
         <ListPreference
-            app:key="pref_extension"
-            app:title="Extension"
+            app:key="@string/extension_key"
+            app:title="@string/extension"
             app:entries="@array/extensions"
             app:entryValues="@array/extensions"
             app:useSimpleSummaryProvider="true"
             app:defaultValue="None" />
 
         <MultiSelectListPreference
-            app:key="pref_metering_mode"
-            app:title="Metering Mode"
+            app:key="@string/metering_mode_key"
+            app:title="@string/metering_mode"
             app:entries="@array/metering_modes"
-            app:entryValues="@array/metering_modes"
-            app:defaultValue="@array/metering_modes" />
+            app:entryValues="@array/metering_mode_values"
+            app:defaultValue="@array/metering_mode_values" />
 
         <DropDownPreference
             app:key="pref_auto_cancel_duration"
