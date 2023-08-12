@@ -1,14 +1,14 @@
 <PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <PreferenceCategory app:title="Photo">
+    <PreferenceCategory app:title="@string/photo">
         <ListPreference
             app:key="@string/flash_key"
             app:title="@string/flash"
             app:entries="@array/flash_names"
             app:entryValues="@array/flash_values"
             app:useSimpleSummaryProvider="true"
-            app:defaultValue="auto" />
+            app:defaultValue="@string/flash_value_auto" />
 
         <ListPreference
             app:key="@string/capture_key"
@@ -56,85 +56,85 @@
             app:defaultValue="@array/metering_mode_values" />
 
         <DropDownPreference
-            app:key="pref_auto_cancel_duration"
-            app:title="Focus Auto Cancel Duration"
+            app:key="@string/auto_cancel_duration_key"
+            app:title="@string/auto_cancel_duration"
             app:entries="@array/numbers"
             app:entryValues="@array/numbers"
-            app:summary="Delay in seconds before cancelling focus" />
+            app:summary="@string/auto_cancel_duration_summary" />
 
         <SwitchPreferenceCompat
-            app:key="pref_lumus"
+            app:key="@string/lumus_key"
             app:title="Lumus"
-            app:summary="Show average luminosity"
+            app:summary="@string/lumus_summary"
             app:defaultValue="false" />
 
     </PreferenceCategory>
 
-    <PreferenceCategory app:title="Video">
+    <PreferenceCategory app:title="@string/video">
         <SwitchPreferenceCompat
             app:key="pref_use_video_temp"
             app:title="Do a video"
             app:defaultValue="false" />
 
         <ListPreference
-            app:key="pref_video_quality"
-            app:title="Quality"
+            app:key="@string/video_quality_key"
+            app:title="@string/quality"
             app:entries="@array/empty"
             app:entryValues="@array/empty"
             app:useSimpleSummaryProvider="false" />
 
         <EditTextPreference
-            app:key="pref_video_duration"
-            app:title="Duration"
-            app:summary="Limit video recording duration" />
+            app:key="@string/video_duration_key"
+            app:title="@string/duration"
+            app:summary="@string/video_duration_summary" />
 
         <SwitchPreferenceCompat
-            app:key="pref_show_video_stats"
-            app:title="Show Stats"
-            app:summary="Display recording stats on screen"
+            app:key="@string/video_stats_key"
+            app:title="@string/video_stats"
+            app:summary="@string/video_stats_summary"
             app:defaultValue="false" />
 
     </PreferenceCategory>
 
     <PreferenceCategory app:title="Preview">
         <ListPreference
-            app:key="pref_scale"
-            app:title="Scaling"
-            app:entries="@array/scale_names"
-            app:entryValues="@array/scale_values"
+            app:key="@string/scaling_key"
+            app:title="@string/scaling"
+            app:entries="@array/scaling_names"
+            app:entryValues="@array/scaling_values"
             app:useSimpleSummaryProvider="true"
             app:defaultValue="center" />
 
     </PreferenceCategory>
 
-    <PreferenceCategory app:title="Misc">
+    <PreferenceCategory app:title="@string/misc">
         <SeekBarPreference
-            app:key="pref_countdown"
-            app:title="Countdown"
+            app:key="@string/countdown_key"
+            app:title="@string/countdown"
             app:showSeekBarValue="true"
             app:defaultValue="0"
             app:min="0"
             android:max="60"
             app:seekBarIncrement="1"
-            app:summary="Wait a bit before taking the photo/video" />
+            app:summary="@string/countdown_summary" />
 
         <SeekBarPreference
-            app:key="pref_exposure"
-            app:title="Exposure"
+            app:key="@string/exposure_key"
+            app:title="@string/exposure"
             app:showSeekBarValue="true"
             app:enabled="false" />
 
         <SwitchPreferenceCompat
-            app:key="pref_multi_camera"
-            app:title="Multi Camera"
-            app:summary="Use front and back camera simultaneously"
+            app:key="@string/multi_camera_key"
+            app:title="@string/multi_camera"
+            app:summary="@string/multi_camera_summary"
             app:defaultValue="false"
             app:enabled="false" />
 
         <SwitchPreferenceCompat
-            app:key="pref_qrcode"
-            app:title="QR Code Scanner"
-            app:summary="Scan QR Codes"
+            app:key="@string/qrcode_key"
+            app:title="@string/qrcode"
+            app:summary="@string/qrcode_summary"
             app:defaultValue="false" />
 
     </PreferenceCategory>

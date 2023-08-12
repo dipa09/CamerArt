@@ -85,7 +85,6 @@ class MainActivity : AppCompatActivity() {
         const val FADING_MESSAGE_DEFAULT_DELAY = 1
         const val FOCUS_AUTO_CANCEL_DEFAULT_DURATION: Long = 3
     }
-    enum class SupportedQuality { NONE, SD, HD, FHD, UHD, COUNT }
 
     private lateinit var viewBinding: ActivityMainBinding
     private lateinit var cameraExecutor: ExecutorService
@@ -398,11 +397,11 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                "pref_scale" -> {
+                resources.getString(R.string.scaling_key) -> {
                     val newScaleType = when (pref.value) {
-                        "center" -> PreviewView.ScaleType.FIT_CENTER
-                        "start" -> PreviewView.ScaleType.FIT_START
-                        "end" -> PreviewView.ScaleType.FIT_END
+                        resources.getString(R.string.scaling_value_center) -> PreviewView.ScaleType.FIT_CENTER
+                        resources.getString(R.string.scaling_value_start)  -> PreviewView.ScaleType.FIT_START
+                        resources.getString(R.string.scaling_value_end)    -> PreviewView.ScaleType.FIT_END
                         else -> scaleType
                     }
 
@@ -428,13 +427,13 @@ class MainActivity : AppCompatActivity() {
                     } catch (_: Exception) { }
                 }
 
-                "pref_auto_cancel_duration" -> {
+                resources.getString(R.string.auto_cancel_duration_key) -> {
                     try {
                         autoCancelDuration = (pref.value as String).toLong()
                     } catch (_: NumberFormatException) { }
                 }
 
-                "pref_lumus" -> {
+                resources.getString(R.string.lumus_key) -> {
                     val newShowLumus = pref.value as Boolean
 
                     if (newShowLumus != showLumus) {
@@ -454,7 +453,7 @@ class MainActivity : AppCompatActivity() {
                     changeCount = toggleMode(pref.value as Boolean, MODE_VIDEO, changeCount)
                 }
 
-                "pref_video_quality" -> {
+                resources.getString(R.string.video_quality_key) -> {
                     val newVideoQuality = videoQualityFromName(pref.value as String)
                     if (newVideoQuality != videoQuality) {
                         videoQuality = newVideoQuality
@@ -462,16 +461,19 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                "pref_video_duration"   -> { videoDuration = stringToIntOr0(pref.value as String) }
-                "pref_show_video_stats" -> { showVideoStats = (pref.value as Boolean) }
-                "pref_exposure"         -> { exposureCompensationIndex = pref.value as Int }
-                "pref_countdown"        -> { delayBeforeActionSeconds = pref.value as Int }
+                resources.getString(R.string.video_duration_key) -> { videoDuration = stringToIntOr0(pref.value as String) }
+                resources.getString(R.string.video_stats_key)    -> { showVideoStats = (pref.value as Boolean) }
+                resources.getString(R.string.exposure_key)       -> { exposureCompensationIndex = pref.value as Int }
+                resources.getString(R.string.countdown_key)      -> { delayBeforeActionSeconds = pref.value as Int }
 
-                "pref_multi_camera" -> {
+                resources.getString(R.string.multi_camera_key) -> {
                     changeCount = toggleMode(pref.value as Boolean, MODE_MULTI_CAMERA, changeCount)
                 }
 
-                "pref_qrcode" -> {
+                resources.getString(R.string.qrcode_key) -> {
+                    // TODO(davide): There is a bug while switching back from QRCODE mode,
+                    // it doesn't make sense to fix, because it can be avoided by changing the UI
+                    // which we are going to do anyway.
                     //changeCount = toggleMode(pref.value as Boolean, MODE_QRCODE_SCANNER, changeCount)
                     currMode = MODE_CAPTURE
                 }
@@ -497,6 +499,12 @@ class MainActivity : AppCompatActivity() {
         currCamControl = camControl
     }
 
+    private fun showPhotoSaveAt(uri: Uri) {
+        val msg = resources.getString(R.string.photo_saved_success) + uri
+        Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
+        Log.d(TAG, msg)
+    }
+
     // TODO(davide): Add more metadata. Location, producer, ...
     private fun takePhoto() {
         val imageCapture = imageCapture ?: return
@@ -514,7 +522,7 @@ class MainActivity : AppCompatActivity() {
                         val img = Image(image, requestedFormat)
                         val uri = saveImage(contentResolver, contentValues, img)
                         if (uri != null) {
-                            Toast.makeText(baseContext, "Saved photo in $uri", Toast.LENGTH_SHORT).show()
+                            showPhotoSaveAt(uri)
                         }
                         super.onCaptureSuccess(image)
                     }
@@ -527,7 +535,7 @@ class MainActivity : AppCompatActivity() {
             val outputOptions = ImageCapture.OutputFileOptions
                 .Builder(contentResolver,
                     MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                    makeContentValues(name, "image/jpeg"))
+                    makeContentValues(name, MIME_TYPE_JPEG))
                 .build()
 
             countdown(delayBeforeActionSeconds)
@@ -537,9 +545,9 @@ class MainActivity : AppCompatActivity() {
                 ContextCompat.getMainExecutor(this),
                 object : ImageCapture.OnImageSavedCallback {
                     override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                        val msg = "Photo capture succeeded: ${output.savedUri}"
-                        Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
-                        Log.d(TAG, msg)
+                        val uri = output.savedUri
+                        if (uri != null)
+                            showPhotoSaveAt(uri)
                     }
 
                     override fun onError(exc: ImageCaptureException) {
@@ -573,10 +581,10 @@ class MainActivity : AppCompatActivity() {
         if (rec != null) {
             if (playing) {
                 rec.pause()
-                Toast.makeText(baseContext, "Paused", Toast.LENGTH_SHORT).show()
+                Toast.makeText(baseContext, resources.getString(R.string.paused), Toast.LENGTH_SHORT).show()
             } else {
                 rec.resume()
-                Toast.makeText(baseContext, "Resumed", Toast.LENGTH_SHORT).show()
+                Toast.makeText(baseContext, resources.getString(R.string.resumed), Toast.LENGTH_SHORT).show()
             }
             playing = !playing
         }

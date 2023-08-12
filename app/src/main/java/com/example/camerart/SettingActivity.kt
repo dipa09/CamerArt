@@ -31,7 +31,7 @@ class SettingActivity : AppCompatActivity() {
                 CameraFeatures(false, false, false)
 
             enablePreference(resources.getString(R.string.flash_key), features.hasFlash)
-            enablePreference("pref_multi_camera", features.hasMulti)
+            enablePreference(resources.getString(R.string.multi_camera_key), features.hasMulti)
 
             // NOTE(davide): Keep the UI consistent since these two are correlated
             val prefCapture: ListPreference? = findPreference(resources.getString(R.string.capture_key))
@@ -49,7 +49,7 @@ class SettingActivity : AppCompatActivity() {
             }
 
             // NOTE(davide): Display only available qualities
-            val prefVideoQuality: ListPreference? = findPreference("pref_video_quality")
+            val prefVideoQuality: ListPreference? = findPreference(resources.getString(R.string.video_quality_key))
             if (prefVideoQuality != null) {
                 val qualities = arguments?.getStringArray("supportedQualities")
                 if (qualities != null) {
@@ -77,7 +77,7 @@ class SettingActivity : AppCompatActivity() {
                 }
             }
 
-            val prefExposure: SeekBarPreference? = findPreference("pref_exposure")
+            val prefExposure: SeekBarPreference? = findPreference(resources.getString(R.string.exposure_key))
             if (prefExposure != null) {
                 val expStateBundle = arguments?.getBundle("exposureState")
                 if (expStateBundle != null) {
@@ -97,7 +97,7 @@ class SettingActivity : AppCompatActivity() {
             // it didn't work...
             // TODO(davide): Is there a way to disable the OK button in the dialog box on invalid
             // inputs? Currently we just discard them
-            val prefVideoDuration: EditTextPreference? = findPreference("pref_video_duration")
+            val prefVideoDuration: EditTextPreference? = findPreference(resources.getString(R.string.video_duration_key))
             if (prefVideoDuration != null) {
                 prefVideoDuration.setOnPreferenceChangeListener { _, newValue ->
                     val duration = newValue as String

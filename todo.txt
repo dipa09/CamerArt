@@ -11,7 +11,6 @@
 
 - Setting Fragment
   - Set output folder for saving photos and videos?
-  - Use user locale for file names
 
 - Use string resources for UI stuff
 
