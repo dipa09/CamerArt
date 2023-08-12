@@ -1,0 +1,20 @@
+- Configuration
+  - Detect devices capable of Preview + Vide + Photo use case
+  - Set resolution
+    https://developer.android.com/training/camerax/configuration#specify-resolution
+
+- Image Capture
+  - setResolutionSelector
+
+- Gestures
+  - Animate transitions?
+
+- Setting Fragment
+  - Set output folder for saving photos and videos?
+
+- Use string resources for UI stuff
+
+- Setting UI
+  - Overflow menu
+    - Info about gestures
+    - Info about the app

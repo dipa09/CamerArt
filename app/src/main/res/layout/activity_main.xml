@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
+<RelativeLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -12,54 +12,79 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <Button
-        android:id="@+id/image_capture_button"
-        android:layout_width="110dp"
-        android:layout_height="110dp"
-        android:layout_marginBottom="50dp"
-        android:layout_marginEnd="50dp"
-        android:elevation="2dp"
-        android:text="@string/take_photo"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/vertical_centerline" />
-
-    <Button
-        android:id="@+id/video_capture_button"
-        android:layout_width="110dp"
-        android:layout_height="110dp"
-        android:layout_marginBottom="50dp"
-        android:layout_marginStart="50dp"
-        android:elevation="2dp"
-        android:text="@string/start_capture"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toEndOf="@id/vertical_centerline" />
-
-    <Button
-        android:id="@+id/mute_button"
-        android:layout_width="80dp"
-        android:layout_height="60dp"
-        android:elevation="2dp"
-        android:text="@string/mute"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="@id/vertical_centerline"
-        />
-
-    <Button
-        android:id="@+id/camera_button"
-        android:layout_width="100dp"
-        android:layout_height="100dp"
-        android:elevation="2dp"
-        android:text="@string/toggle_camera"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        />
-
-    <androidx.constraintlayout.widget.Guideline
-        android:id="@+id/vertical_centerline"
+    <ImageButton
+        android:id="@+id/settings_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        app:layout_constraintGuide_percent=".50" />
+        android:src="@android:drawable/ic_menu_manage"
+        android:layout_alignParentTop="true"
+        android:contentDescription="@string/settings" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+    <ImageButton
+        android:id="@+id/camera_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@android:drawable/ic_menu_camera"
+        android:layout_alignParentTop="true"
+        android:layout_centerInParent="true" />
+
+    <ImageButton
+        android:id="@+id/mute_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_toRightOf="@id/camera_button"
+        android:src="@android:drawable/ic_btn_speak_now" />
+
+    <ImageButton
+        android:id="@+id/photo_button"
+        android:scaleType="fitCenter"
+        android:background="@drawable/ic_shutter"
+        android:layout_width="90dp"
+        android:layout_height="90dp"
+        android:layout_marginBottom="20dp"
+        android:layout_alignParentBottom="true"
+        android:layout_centerInParent="true"
+        android:elevation="2dp" />
+
+    <ImageButton
+        android:id="@+id/play_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_toRightOf="@id/photo_button"
+        android:src="@android:drawable/ic_media_pause"
+        android:visibility="invisible"  />
+
+    <TextView
+        android:id="@+id/info_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:visibility="invisible"
+        android:text=""
+        android:textColor="@color/white"
+        android:textStyle="bold"
+        android:textSize="30sp" />
+
+    <TextView
+        android:id="@+id/stats_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_toEndOf="@id/mute_button"
+        android:maxLines="3"
+        android:minLines="3"
+        android:visibility="invisible"
+        android:textColor="@color/white" />
+    
+    <View
+        android:id="@+id/focus_ring"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:background="@drawable/shape_ring"
+        android:layout_centerInParent="true"
+        android:visibility="invisible"
+        />
+    
+</RelativeLayout>

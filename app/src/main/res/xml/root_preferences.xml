@@ -1,0 +1,142 @@
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <PreferenceCategory app:title="@string/photo">
+        <ListPreference
+            app:key="@string/flash_key"
+            app:title="@string/flash"
+            app:entries="@array/flash_names"
+            app:entryValues="@array/flash_values"
+            app:useSimpleSummaryProvider="true"
+            app:defaultValue="@string/flash_value_auto" />
+
+        <ListPreference
+            app:key="@string/capture_key"
+            app:title="@string/capture"
+            app:entries="@array/capture_names"
+            app:entryValues="@array/capture_values"
+            app:useSimpleSummaryProvider="true"
+            app:defaultValue="latency" />
+
+        <SeekBarPreference
+            app:key="@string/jpeg_quality_key"
+            app:title="@string/jpeg_quality"
+            app:min="1"
+            app:showSeekBarValue="true"
+            android:max="100" />
+
+        <ListPreference
+            app:key="@string/rotation_key"
+            app:title="@string/rotation"
+            app:entries="@array/rotation_names"
+            app:entryValues="@array/rotation_values"
+            app:useSimpleSummaryProvider="true"
+            app:defaultValue="0" />
+
+        <ListPreference
+            app:key="@string/image_fmt_key"
+            app:title="@string/image_fmt"
+            app:entries="@array/empty"
+            app:entryValues="@array/empty"
+            app:useSimpleSummaryProvider="false" />
+
+        <ListPreference
+            app:key="@string/extension_key"
+            app:title="@string/extension"
+            app:entries="@array/extensions"
+            app:entryValues="@array/extensions"
+            app:useSimpleSummaryProvider="true"
+            app:defaultValue="None" />
+
+        <MultiSelectListPreference
+            app:key="@string/metering_mode_key"
+            app:title="@string/metering_mode"
+            app:entries="@array/metering_modes"
+            app:entryValues="@array/metering_mode_values"
+            app:defaultValue="@array/metering_mode_values" />
+
+        <DropDownPreference
+            app:key="@string/auto_cancel_duration_key"
+            app:title="@string/auto_cancel_duration"
+            app:entries="@array/numbers"
+            app:entryValues="@array/numbers"
+            app:summary="@string/auto_cancel_duration_summary" />
+
+        <SwitchPreferenceCompat
+            app:key="@string/lumus_key"
+            app:title="Lumus"
+            app:summary="@string/lumus_summary"
+            app:defaultValue="false" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/video">
+        <SwitchPreferenceCompat
+            app:key="pref_use_video_temp"
+            app:title="Do a video"
+            app:defaultValue="false" />
+
+        <ListPreference
+            app:key="@string/video_quality_key"
+            app:title="@string/quality"
+            app:entries="@array/empty"
+            app:entryValues="@array/empty"
+            app:useSimpleSummaryProvider="false" />
+
+        <EditTextPreference
+            app:key="@string/video_duration_key"
+            app:title="@string/duration"
+            app:summary="@string/video_duration_summary" />
+
+        <SwitchPreferenceCompat
+            app:key="@string/video_stats_key"
+            app:title="@string/video_stats"
+            app:summary="@string/video_stats_summary"
+            app:defaultValue="false" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="Preview">
+        <ListPreference
+            app:key="@string/scaling_key"
+            app:title="@string/scaling"
+            app:entries="@array/scaling_names"
+            app:entryValues="@array/scaling_values"
+            app:useSimpleSummaryProvider="true"
+            app:defaultValue="center" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/misc">
+        <SeekBarPreference
+            app:key="@string/countdown_key"
+            app:title="@string/countdown"
+            app:showSeekBarValue="true"
+            app:defaultValue="0"
+            app:min="0"
+            android:max="60"
+            app:seekBarIncrement="1"
+            app:summary="@string/countdown_summary" />
+
+        <SeekBarPreference
+            app:key="@string/exposure_key"
+            app:title="@string/exposure"
+            app:showSeekBarValue="true"
+            app:enabled="false" />
+
+        <SwitchPreferenceCompat
+            app:key="@string/multi_camera_key"
+            app:title="@string/multi_camera"
+            app:summary="@string/multi_camera_summary"
+            app:defaultValue="false"
+            app:enabled="false" />
+
+        <SwitchPreferenceCompat
+            app:key="@string/qrcode_key"
+            app:title="@string/qrcode"
+            app:summary="@string/qrcode_summary"
+            app:defaultValue="false" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>
