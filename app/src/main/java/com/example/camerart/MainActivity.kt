@@ -1,188 +1,628 @@
 package com.example.camerart
 
-import androidx.appcompat.app.AppCompatActivity
-import android.os.Bundle
 import android.Manifest
+import android.annotation.SuppressLint
+import android.app.ActivityOptions
+import android.content.ContentResolver
 import android.content.ContentValues
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import android.os.Bundle
+import android.os.CountDownTimer
 import android.provider.MediaStore
 import android.util.Log
+import android.view.*
+import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageCaptureException
-import androidx.camera.core.Preview
+import androidx.appcompat.app.AppCompatActivity
+import androidx.camera.core.*
+import androidx.camera.extensions.ExtensionMode
+import androidx.camera.extensions.ExtensionsManager
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.mlkit.vision.MlKitAnalyzer
 import androidx.camera.video.*
+import androidx.camera.video.VideoCapture
+import androidx.camera.view.CameraController.COORDINATE_SYSTEM_VIEW_REFERENCED
+import androidx.camera.view.LifecycleCameraController
+import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.core.content.PermissionChecker
+import androidx.core.view.GestureDetectorCompat
+import androidx.preference.PreferenceManager
 import com.example.camerart.databinding.ActivityMainBinding
+import com.google.mlkit.vision.barcode.BarcodeScanner
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
+import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.common.Barcode
+import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-
-typealias LumaListener = (luma: Double) -> Unit
-
-/* TODO(davide):
-   - Detect devices capable of Preview + Vide + Photo use case
-   - Button between Preview + Video and Preview + Photo
-   - Stop/Resume video recording
-   - Set output folder for saving photos and videos?
-   - Save photos in png?
-   - Use user locale for file names
-   - Make the mute/unmute button invisible during video recording
-   - Option to set image resolution
-   - Ensure that front and back cameras are available
-   - Camera UI
-   - Gallery Activity
-   - Settings Activity
-   - Something that uses ImageAnalysis
-   - Something that uses the Advance API
-*/
+import java.util.concurrent.TimeUnit
+import kotlin.collections.ArrayList
+import kotlin.collections.HashSet
+import kotlin.math.abs
 
 class MainActivity : AppCompatActivity() {
+    companion object {
+        private const val TAG = "CamerArt"
+        private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
+
+        private val REQUIRED_PERMISSIONS =
+            mutableListOf(
+                Manifest.permission.CAMERA,
+                Manifest.permission.RECORD_AUDIO,
+            ).apply {
+                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+                    add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                }
+            }.toTypedArray()
+
+        const val JPEG_QUALITY_UNINITIALIZED: Int = 0
+        const val JPEG_QUALITY_LATENCY: Int = 95
+        const val JPEG_QUALITY_MAX: Int = 100
+        const val TARGET_ROTATION_UNINITIALIZED = -1
+
+        const val SWIPE_THRESHOLD = 100
+        const val SWIPE_VELOCITY_THRESHOLD = 100
+
+        const val MIME_TYPE_JPEG = "image/jpeg"
+        const val MIME_TYPE_PNG  = "image/png"
+        const val MIME_TYPE_WEBP = "image/webp"
+        const val MIN_VERSION_FOR_WEBP = Build.VERSION_CODES.R
+
+        private const val ON_FIRST_RUN = "onfirstrun"
+
+        const val MODE_CAPTURE = 0
+        const val MODE_VIDEO = 1
+        const val MODE_MULTI_CAMERA = 3
+        const val MODE_QRCODE_SCANNER = 4
+
+        const val FADING_MESSAGE_DEFAULT_DELAY = 1
+        const val FOCUS_AUTO_CANCEL_DEFAULT_DURATION: Long = 3
+    }
+
     private lateinit var viewBinding: ActivityMainBinding
     private lateinit var cameraExecutor: ExecutorService
+    private lateinit var barcodeScanner: BarcodeScanner
+
+    // Gesture stuff
+    private lateinit var  commonDetector: GestureDetectorCompat
+    private lateinit var scaleDetector: ScaleGestureDetector
+    private var scaling: Boolean = false
+    //
 
     private var imageCapture: ImageCapture? = null
     private var videoCapture: VideoCapture<Recorder>? = null
     private var recording: Recording? = null
-    private var audioEnabled: Boolean = true
-    private var lensFacing: Int = CameraSelector.LENS_FACING_BACK
+    private var currCamInfo: CameraInfo? = null
+    private var currCamControl: CameraControl? = null
 
-    private val activityResultLauncher =
+    private var currMode: Int = MODE_CAPTURE
+
+    // Capture
+    private var lensFacing: Int = CameraSelector.LENS_FACING_BACK
+    private var captureMode: Int = ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
+    private var flashMode: Int = ImageCapture.FLASH_MODE_AUTO
+    private var jpegQuality: Int = JPEG_QUALITY_UNINITIALIZED
+    private var targetRotation: Int = TARGET_ROTATION_UNINITIALIZED
+    private var focusing: Boolean = false
+    private var extensionMode: Int = ExtensionMode.NONE
+    private var meteringMode: Int = (FocusMeteringAction.FLAG_AF or
+                                     FocusMeteringAction.FLAG_AE or
+                                     FocusMeteringAction.FLAG_AWB)
+    private var autoCancelDuration = FOCUS_AUTO_CANCEL_DEFAULT_DURATION
+    private var showLumus = false
+
+    // Video
+    private var audioEnabled: Boolean = true
+    private var videoQuality: Quality = Quality.HIGHEST
+    private var playing: Boolean = false
+    private var videoDuration: Int = 0
+    private var showVideoStats: Boolean = false
+
+    // Preview
+    private var scaleType: PreviewView.ScaleType = PreviewView.ScaleType.FIT_CENTER
+
+    private var requestedFormat: String = MIME_TYPE_JPEG
+    private var exposureCompensationIndex: Int = 0
+    private var delayBeforeActionSeconds: Int = 0
+
+    private lateinit var cameraFeatures: CameraFeatures
+
+    private val requestPermissionLauncher =
         registerForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions())
         { permissions ->
-            // Handle Permission granted/rejected
             var permissionGranted = true
             permissions.entries.forEach {
-                if (it.key in REQUIRED_PERMISSIONS && it.value == false)
+                if (it.key in REQUIRED_PERMISSIONS && !it.value)
                     permissionGranted = false
             }
+
             if (!permissionGranted) {
-                Toast.makeText(baseContext,
-                    "Permission request denied",
-                    Toast.LENGTH_SHORT).show()
+                Toast.makeText(baseContext, "Permission request denied", Toast.LENGTH_SHORT).show()
             } else {
-                startCamera()
+                initialize()
             }
         }
+
+    private fun requestPermissions() {
+        requestPermissionLauncher.launch(REQUIRED_PERMISSIONS)
+    }
+
+    private fun allPermissionsGranted(): Boolean {
+        for (perm in REQUIRED_PERMISSIONS) {
+            if (ContextCompat.checkSelfPermission(baseContext, perm) != PackageManager.PERMISSION_GRANTED) {
+                return false
+            }
+        }
+        return true
+    }
 
     override fun onDestroy() {
         super.onDestroy()
         cameraExecutor.shutdown()
     }
 
+    override fun onResume() {
+        super.onResume()
+
+        if (loadPreferences(false)) {
+            Log.d(TAG, "RESTART CAMERA")
+            startCamera()
+        }
+        Log.d(TAG, "ON RESUME ENDED")
+    }
+
+    private fun firstRunCheck() {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+        if (prefs.getBoolean(ON_FIRST_RUN, true)) {
+            prefs.edit().putBoolean(ON_FIRST_RUN, false).apply()
+
+            Thread {
+                if (!deviceHasBeenTested()) {
+                    runOnUiThread { infoDialog(this) }
+                }
+            }.start()
+        }
+    }
+
+    private fun initialize() {
+        firstRunCheck()
+        //getAvailableMimes()
+        loadPreferences(true)
+        startCamera()
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.d(TAG, "ON CREATE START")
+
+        //dumpCameraFeatures(packageManager)
+        cameraFeatures = initCameraFeatures(packageManager)
+
+        /*
+        // NOTE(davide): This must come before setContentView
+        with(window) {
+            requestFeature(Window.FEATURE_ACTIVITY_TRANSITIONS)
+            enterTransition = Slide()
+            exitTransition = Slide()
+        }
+        */
+
         viewBinding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(viewBinding.root)
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        commonDetector = GestureDetectorCompat(viewBinding.viewFinder.context, commonListener)
+        scaleDetector = ScaleGestureDetector(viewBinding.viewFinder.context, scaleListener)
 
-        // Request camera permissions
         if (allPermissionsGranted()) {
-            startCamera()
+            initialize()
         } else {
             requestPermissions()
         }
 
-        // Set up the listeners for take photo and video capture buttons
-        viewBinding.imageCaptureButton.setOnClickListener { takePhoto() }
-        viewBinding.videoCaptureButton.setOnClickListener { captureVideo() }
+        viewBinding.photoButton.setOnClickListener { takePhotoOrVideo() }
         viewBinding.muteButton.setOnClickListener { toggleAudio() }
-        viewBinding.cameraButton.setOnClickListener { toggleCamera() }
+        viewBinding.settingsButton.setOnClickListener { launchSetting() }
+        viewBinding.playButton.setOnClickListener { controlVideoRecording() }
+        if (cameraFeatures.hasFront) {
+            viewBinding.cameraButton.setOnClickListener { toggleCamera() }
+        } else {
+            flashMode = ImageCapture.FLASH_MODE_OFF
+            viewBinding.cameraButton.isEnabled = false
+            viewBinding.cameraButton.visibility = View.INVISIBLE
+        }
+
+        viewBinding.viewFinder.setOnTouchListener { _, motionEvent ->
+            scaleDetector.onTouchEvent(motionEvent)
+            if (!scaling)
+                commonDetector.onTouchEvent(motionEvent)
+
+            return@setOnTouchListener true
+        }
 
         cameraExecutor = Executors.newSingleThreadExecutor()
+        Log.d(TAG, "ON CREATE END")
     }
 
     private fun toggleAudio() {
         audioEnabled = !audioEnabled
-        if (audioEnabled)
-            viewBinding.muteButton.text = getString(R.string.mute)
-        else
-            viewBinding.muteButton.text = getString(R.string.unmute)
+        val alpha = if (audioEnabled) 0xff/2 else 0xff
+        viewBinding.muteButton.background.alpha = alpha
     }
 
     private fun toggleCamera() {
-        lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK)
+        lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK) {
+            viewBinding.cameraButton.background.alpha = 0xff/2
             CameraSelector.LENS_FACING_FRONT
-        else
+        } else {
+            viewBinding.cameraButton.background.alpha = 0xff
             CameraSelector.LENS_FACING_BACK
+        }
         startCamera()
     }
 
-    private fun takePhoto() {
-        // Get a stable reference of the modifiable image capture use case
-        val imageCapture = imageCapture ?: return
+    private fun launchSetting() {
+        val intent = Intent(this, SettingActivity::class.java)
 
-        // Create time stamped name and MediaStore entry.
-        val name = SimpleDateFormat(FILENAME_FORMAT, Locale.US).format(System.currentTimeMillis())
-        val contentValues = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, name)
-            put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
-            if(Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
-                put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/CameraX-Image")
+        val camInfo = currCamInfo
+        if (camInfo != null) {
+            intent.putExtra("supportedQualities", querySupportedVideoQualities(camInfo))
+            intent.putExtra("exposureState", exposureStateToBundle(camInfo.exposureState))
+        }
+        intent.putExtra("features", cameraFeaturesToBundle(cameraFeatures))
+
+        this.startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this).toBundle())
+    }
+
+    private fun toggleMode(prefValue: Boolean, newState: Int, changeCount: Int): Int {
+        val newMode = if (prefValue)
+            newState
+        else
+            currMode
+
+        var newChangeCount = changeCount
+        if (newMode != currMode) {
+            currMode = newMode
+            ++newChangeCount
+        }
+
+        return newChangeCount
+    }
+
+    private fun flashModeFromPreference(prefValue: String): Int {
+        return when (prefValue) {
+            resources.getString(R.string.flash_value_on) -> ImageCapture.FLASH_MODE_ON
+            resources.getString(R.string.flash_value_off) -> ImageCapture.FLASH_MODE_OFF
+            else -> ImageCapture.FLASH_MODE_AUTO
+        }
+    }
+
+    private fun captureModeFromPreference(name: String, camInfo: CameraInfo?): Int {
+        var mode = ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
+        if (name == resources.getString(R.string.capture_value_quality)) {
+            mode = ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY
+        } /* else if (name == "zero" && camInfo != null &&
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+        camInfo.isZslSupported) {
+        mode = ImageCapture.CAPTURE_MODE_ZERO_SHUTTER_LAG
+    }*/
+
+        return mode
+    }
+
+    fun meteringModeFromPreference(name: CharSequence): Int {
+        return when (name) {
+            resources.getString(R.string.metering_mode_value_auto_focus) ->
+                FocusMeteringAction.FLAG_AF
+            resources.getString(R.string.metering_mode_value_auto_exposure) ->
+                FocusMeteringAction.FLAG_AE
+            resources.getString(R.string.metering_mode_value_auto_white_balance) ->
+                FocusMeteringAction.FLAG_AWB
+            else -> 0
+        }
+    }
+
+    // NOTE(davide): For some reason, sometimes you need to delete app's data if you edit
+    // a previous preference from root_preferences.xml or arrays.xml, otherwise you get
+    // a random exception.
+    private fun loadPreferences(onCreate: Boolean): Boolean {
+        var changeCount = 0
+
+        val sharedPreference = PreferenceManager.getDefaultSharedPreferences(this)
+        var newCaptureMode: Int = captureMode
+        for (pref in sharedPreference.all.iterator()) {
+            //Log.i(TAG, "preference ${pref.key}, ${pref.value}")
+
+            when (pref.key) {
+                resources.getString(R.string.flash_key) -> {
+                    val newFlashMode = flashModeFromPreference(pref.value as String)
+                    if (newFlashMode != flashMode) {
+                        flashMode = newFlashMode
+                        ++changeCount
+                    }
+                }
+
+                resources.getString(R.string.capture_key) -> {
+                    newCaptureMode = captureModeFromPreference(pref.value as String, currCamInfo)
+                    if (newCaptureMode != captureMode) {
+                        captureMode = newCaptureMode
+                        ++changeCount
+                    }
+                }
+
+                resources.getString(R.string.image_fmt_key) -> {
+                    requestedFormat = pref.value as String
+                    if (requestedFormat.isEmpty())
+                        requestedFormat = MIME_TYPE_JPEG
+                }
+
+                resources.getString(R.string.jpeg_quality_key) -> {
+                    val newJpegQuality = pref.value as Int
+
+                    if (newJpegQuality != jpegQuality) {
+                        jpegQuality = newJpegQuality
+                        ++changeCount
+                    }
+                }
+
+                resources.getString(R.string.rotation_key) -> {
+                    val newTargetRotation = when (pref.value) {
+                        "0" -> Surface.ROTATION_0
+                        "90" -> Surface.ROTATION_90
+                        "180" -> Surface.ROTATION_180
+                        "270" -> Surface.ROTATION_270
+                        else -> TARGET_ROTATION_UNINITIALIZED
+                    }
+
+                    if (newTargetRotation != targetRotation) {
+                        targetRotation = newTargetRotation
+                        ++changeCount
+                    }
+                }
+
+                resources.getString(R.string.extension_key) -> {
+                    val newExtensionMode = extensionFromName(pref.value as String)
+
+                    if (newExtensionMode != extensionMode) {
+                        extensionMode = newExtensionMode
+                        ++changeCount
+                    }
+                }
+
+                resources.getString(R.string.scaling_key) -> {
+                    val newScaleType = when (pref.value) {
+                        resources.getString(R.string.scaling_value_center) -> PreviewView.ScaleType.FIT_CENTER
+                        resources.getString(R.string.scaling_value_start)  -> PreviewView.ScaleType.FIT_START
+                        resources.getString(R.string.scaling_value_end)    -> PreviewView.ScaleType.FIT_END
+                        else -> scaleType
+                    }
+
+                    if (newScaleType != scaleType) {
+                        scaleType = newScaleType
+                        ++changeCount
+                    }
+                }
+
+                resources.getString(R.string.metering_mode_key) -> {
+                    //Log.d("YYY", "${pref.value}")
+                    try {
+                        var newMeteringMode = 0
+                        for (meterName in pref.value as HashSet<String>) {
+                            newMeteringMode = newMeteringMode or meteringModeFromPreference(meterName)
+                        }
+
+                        if (newMeteringMode != meteringMode) {
+                            meteringMode = newMeteringMode
+                            if (!onCreate)
+                                fadingMessage(describeMeteringMode(meteringMode), 2)
+                        }
+                    } catch (_: Exception) { }
+                }
+
+                resources.getString(R.string.auto_cancel_duration_key) -> {
+                    try {
+                        autoCancelDuration = (pref.value as String).toLong()
+                    } catch (_: NumberFormatException) { }
+                }
+
+                resources.getString(R.string.lumus_key) -> {
+                    val newShowLumus = pref.value as Boolean
+
+                    if (newShowLumus != showLumus) {
+                        showLumus = newShowLumus
+                        currMode = MODE_CAPTURE
+                        ++changeCount
+                    }
+
+                    if (showLumus)
+                        viewBinding.statsText.visibility = View.VISIBLE
+                    else
+                        viewBinding.statsText.visibility = View.INVISIBLE
+                }
+
+                // TODO(davide): Temporary UI
+                "pref_use_video_temp" -> {
+                    changeCount = toggleMode(pref.value as Boolean, MODE_VIDEO, changeCount)
+                }
+
+                resources.getString(R.string.video_quality_key) -> {
+                    val newVideoQuality = videoQualityFromName(pref.value as String)
+                    if (newVideoQuality != videoQuality) {
+                        videoQuality = newVideoQuality
+                        ++changeCount
+                    }
+                }
+
+                resources.getString(R.string.video_duration_key) -> { videoDuration = stringToIntOr0(pref.value as String) }
+                resources.getString(R.string.video_stats_key)    -> { showVideoStats = (pref.value as Boolean) }
+                resources.getString(R.string.exposure_key)       -> { exposureCompensationIndex = pref.value as Int }
+                resources.getString(R.string.countdown_key)      -> { delayBeforeActionSeconds = pref.value as Int }
+
+                resources.getString(R.string.multi_camera_key) -> {
+                    changeCount = toggleMode(pref.value as Boolean, MODE_MULTI_CAMERA, changeCount)
+                }
+
+                resources.getString(R.string.qrcode_key) -> {
+                    // TODO(davide): There is a bug while switching back from QRCODE mode,
+                    // it doesn't make sense to fix, because it can be avoided by changing the UI
+                    // which we are going to do anyway.
+                    //changeCount = toggleMode(pref.value as Boolean, MODE_QRCODE_SCANNER, changeCount)
+                    currMode = MODE_CAPTURE
+                }
             }
         }
 
-        // Create output options object which contains file + metadata
-        val outputOptions = ImageCapture.OutputFileOptions
-            .Builder(contentResolver,
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                contentValues)
-            .build()
+        // NOTE(davide): Change JPEG quality unless the user changed the capture mode
+        if (newCaptureMode != captureMode) {
+            jpegQuality = JPEG_QUALITY_UNINITIALIZED
+            captureMode = newCaptureMode
+            ++changeCount
+        }
 
-        // Set up image capture listener, which is triggered after photo has
-        // been taken
-        imageCapture.takePicture(
-            outputOptions,
-            ContextCompat.getMainExecutor(this),
-            object : ImageCapture.OnImageSavedCallback {
-                override fun onError(exc: ImageCaptureException) {
-                    Log.e(TAG, "Photo capture failed: ${exc.message}", exc)
-                }
+        return changeCount > 0
+    }
 
-                override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                    val msg = "Photo capture succeeded: ${output.savedUri}"
-                    Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
-                    Log.d(TAG, msg)
+    private fun applySettingsToCurrentCamera(camInfo: CameraInfo, camControl: CameraControl) {
+        if (camInfo.exposureState.exposureCompensationIndex != exposureCompensationIndex) {
+            camControl.setExposureCompensationIndex(exposureCompensationIndex)
+        }
+
+        currCamInfo = camInfo
+        currCamControl = camControl
+    }
+
+    private fun showPhotoSaveAt(uri: Uri) {
+        val msg = resources.getString(R.string.photo_saved_success) + uri
+        Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
+        Log.d(TAG, msg)
+    }
+
+    // TODO(davide): Add more metadata. Location, producer, ...
+    private fun takePhoto() {
+        val imageCapture = imageCapture ?: return
+
+        val name = SimpleDateFormat(FILENAME_FORMAT, Locale.US).format(System.currentTimeMillis())
+        if (requestedFormat != MIME_TYPE_JPEG && extensionMode == ExtensionMode.NONE) {
+            val contentValues = makeContentValues(name, requestedFormat)
+            // TODO(davide): Launch another executor for png, since it's very slow
+            imageCapture.takePicture(
+                ContextCompat.getMainExecutor(this),
+                object : ImageCapture.OnImageCapturedCallback() {
+                    override fun onCaptureSuccess(image: ImageProxy) {
+                        // NOTE(davide): Apparently there is no way to tell CameraX to NOT compress
+                        // the image in JPEG
+                        val img = Image(image, requestedFormat)
+                        val uri = saveImage(contentResolver, contentValues, img)
+                        if (uri != null) {
+                            showPhotoSaveAt(uri)
+                        }
+                        super.onCaptureSuccess(image)
+                    }
+
+                    override fun onError(exc: ImageCaptureException) {
+                        Log.e(TAG, "Photo capture failed: ${exc.message}", exc)
+                    }
+                })
+        } else {
+            val outputOptions = ImageCapture.OutputFileOptions
+                .Builder(contentResolver,
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    makeContentValues(name, MIME_TYPE_JPEG))
+                .build()
+
+            countdown(delayBeforeActionSeconds)
+
+            imageCapture.takePicture(
+                outputOptions,
+                ContextCompat.getMainExecutor(this),
+                object : ImageCapture.OnImageSavedCallback {
+                    override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                        val uri = output.savedUri
+                        if (uri != null)
+                            showPhotoSaveAt(uri)
+                    }
+
+                    override fun onError(exc: ImageCaptureException) {
+                        Log.e(TAG, "Photo capture failed: ${exc.message}", exc)
+                    }
                 }
+            )
+        }
+    }
+
+    private fun saveImage(resolver: ContentResolver, values: ContentValues, img: Image): Uri? {
+        var uri: Uri? = null
+        try {
+            uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                ?: throw IOException("Failed to create MediaStore record")
+
+            resolver.openOutputStream(uri)?.use {
+                img.write(it)
+            } ?: throw IOException("Failed to open output stream")
+
+        } catch (exc: IOException) {
+            uri?.let { orphanUri ->
+                resolver.delete(orphanUri, null, null)
             }
-        )
+        }
+        return uri
+    }
+
+    private fun controlVideoRecording() {
+        val rec = recording
+        if (rec != null) {
+            if (playing) {
+                rec.pause()
+                Toast.makeText(baseContext, resources.getString(R.string.paused), Toast.LENGTH_SHORT).show()
+            } else {
+                rec.resume()
+                Toast.makeText(baseContext, resources.getString(R.string.resumed), Toast.LENGTH_SHORT).show()
+            }
+            playing = !playing
+        }
+    }
+
+    private fun stopRecording(): Boolean {
+        var stopped = false
+        val rec = recording
+        if (rec != null) {
+            rec.stop()
+            recording = null
+            viewBinding.playButton.visibility = View.INVISIBLE
+            viewBinding.muteButton.visibility = View.VISIBLE
+            viewBinding.statsText.apply {
+                text = ""
+                visibility = View.INVISIBLE
+            }
+            playing = false
+
+            stopped = true
+        }
+
+        return stopped
     }
 
     private fun captureVideo() {
         val videoCapture = this.videoCapture ?: return
 
-        viewBinding.videoCaptureButton.isEnabled = false
-
-        val curRecording = recording
-        if (curRecording != null) {
-            // Stop the current recording session.
-            curRecording.stop()
-            recording = null
+        viewBinding.photoButton.isEnabled = false
+        if (stopRecording())
             return
-        }
 
-        // create and start a new recording session
-        val name = SimpleDateFormat(FILENAME_FORMAT, Locale.US).format(System.currentTimeMillis())
-        val contentValues = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, name)
-            put(MediaStore.MediaColumns.MIME_TYPE, "video/mp4")
-            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.P) {
-                put(MediaStore.Video.Media.RELATIVE_PATH, "Movies/CameraX-Video")
-            }
-        }
+        viewBinding.muteButton.visibility = View.INVISIBLE
 
-        val mediaStoreOutputOptions = MediaStoreOutputOptions
-            .Builder(contentResolver, MediaStore.Video.Media.EXTERNAL_CONTENT_URI)
-            .setContentValues(contentValues)
-            .build()
+        var recDurationNanos = Long.MAX_VALUE
+
         recording = videoCapture.output
-            .prepareRecording(this, mediaStoreOutputOptions)
+            .prepareRecording(this, buildVideoOptions(FILENAME_FORMAT, contentResolver))
             .apply {
                 if (PermissionChecker.checkSelfPermission(this@MainActivity,
                         Manifest.permission.RECORD_AUDIO) ==
@@ -190,125 +630,391 @@ class MainActivity : AppCompatActivity() {
                 {
                     if (audioEnabled)
                         withAudioEnabled()
+                    if (videoDuration > 0)
+                        recDurationNanos = videoDuration.toLong()*1_000_000_000
+                    if (showVideoStats)
+                        viewBinding.statsText.visibility = View.VISIBLE
+                    countdown(delayBeforeActionSeconds)
                 }
             }
-            .start(ContextCompat.getMainExecutor(this)) { recordEvent ->
-                when(recordEvent) {
-                    is VideoRecordEvent.Start -> {
-                        viewBinding.videoCaptureButton.apply {
-                            text = getString(R.string.stop_capture)
-                            isEnabled = true
-                        }
-                    }
-                    is VideoRecordEvent.Finalize -> {
-                        if (!recordEvent.hasError()) {
-                            val msg = "Video capture succeeded: " +
-                                    "${recordEvent.outputResults.outputUri}"
-                            Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT)
-                                .show()
-                            Log.d(TAG, msg)
-                        } else {
-                            recording?.close()
-                            recording = null
-                            Log.e(TAG, "Video capture ends with error: " +
-                                    "${recordEvent.error}")
-                        }
-                        viewBinding.videoCaptureButton.apply {
-                            text = getString(R.string.start_capture)
-                            isEnabled = true
-                        }
-                    }
-                }
-            }
+            .start(ContextCompat.getMainExecutor(this)) { recordEvent -> handleRecordEvent(recordEvent, recDurationNanos) }
+
+        viewBinding.playButton.visibility = View.VISIBLE
+        playing = true
     }
 
-    private fun startCamera() {
-        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
-
-        cameraProviderFuture.addListener({
-            // Used to bind the lifecycle of cameras to the lifecycle owner
-            val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
-
-            // Preview
-            val preview = Preview.Builder()
-                .build()
-                .also {
-                    it.setSurfaceProvider(viewBinding.viewFinder.surfaceProvider)
-                }
-
-            imageCapture = ImageCapture.Builder().build()
-
-            val recorder = Recorder.Builder()
-                .setQualitySelector(QualitySelector.from(Quality.HIGHEST))
-                .build()
-            videoCapture = VideoCapture.withOutput(recorder)
-
-            /*
-            val imageAnalyzer = ImageAnalysis.Builder()
-                .build()
-                .also {
-                    it.setAnalyzer(cameraExecutor, LuminosityAnalyzer { luma ->
-                        Log.d(TAG, "Average luminosity: $luma")
-                    })
-                }
-             */
-
-            // Select the default camera
-            val cameraSelector = CameraSelector.Builder().requireLensFacing(lensFacing).build()
-
-            try {
-                cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture/*, videoCapture*/)
-            } catch(exc: Exception) {
-                Log.e(TAG, "Use case binding failed", exc)
+    private fun handleRecordEvent(event: VideoRecordEvent, recDurationNanos: Long) {
+        when (event) {
+            is VideoRecordEvent.Start -> {
+                viewBinding.photoButton.isEnabled = true
             }
 
+            is VideoRecordEvent.Finalize -> {
+                if (!event.hasError()) {
+                    val msg = R.string.video_saved_success.toString() + "${event.outputResults.outputUri}"
+                    Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
+                    Log.d(TAG, msg)
+                } else {
+                    recording?.close()
+                    recording = null
+                    Log.e(TAG, R.string.video_saved_failed.toString() + "${event.error}")
+                }
+                viewBinding.photoButton.apply {
+                    isEnabled = true
+                }
+            }
+
+            is VideoRecordEvent.Status -> {
+                val stats = event.recordingStats
+                if (stats.recordedDurationNanos < recDurationNanos) {
+                    if (showVideoStats) {
+                        val audioDesc = when (stats.audioStats.audioState) {
+                            AudioStats.AUDIO_STATE_ACTIVE -> "On"
+                            AudioStats.AUDIO_STATE_DISABLED -> "Off"
+                            AudioStats.AUDIO_STATE_SOURCE_SILENCED -> "Silenced"
+                            else -> "Bad"
+                        }
+
+                        viewBinding.statsText.text =
+                            "Time: ${humanizeTime(stats.recordedDurationNanos)}\n" +
+                                    "Size: ${humanizeSize(stats.numBytesRecorded)}\n" +
+                                    "Audio: $audioDesc"
+                    }
+                } else {
+                    stopRecording()
+                }
+            }
+        }
+    }
+    private fun takePhotoOrVideo() {
+        if (currMode == MODE_VIDEO)
+            captureVideo()
+        else
+            takePhoto()
+    }
+
+    private fun buildSelector(): CameraSelector {
+        return CameraSelector.Builder().requireLensFacing(lensFacing).build()
+    }
+
+    @SuppressLint("WrongConstant")
+    private fun buildPreview(): Preview {
+        val preview = Preview.Builder()
+            .apply {
+                if (targetRotation != TARGET_ROTATION_UNINITIALIZED || currMode == MODE_VIDEO)
+                    setTargetRotation(targetRotation)
+            }.build()
+            .also {
+                viewBinding.viewFinder.scaleType = scaleType
+                it.setSurfaceProvider(viewBinding.viewFinder.surfaceProvider)
+            }
+        return preview
+    }
+
+    @SuppressLint("WrongConstant")
+    private fun buildImageCapture(): ImageCapture {
+        val imageCapture = ImageCapture.Builder()
+            .setCaptureMode(captureMode)
+            .setFlashMode(flashMode)
+            .apply {
+                if (jpegQuality != JPEG_QUALITY_UNINITIALIZED)
+                    setJpegQuality(jpegQuality)
+                if (targetRotation != TARGET_ROTATION_UNINITIALIZED)
+                    setTargetRotation(targetRotation)
+            }
+            .build()
+        return imageCapture
+    }
+
+    private fun startNormalCamera() {
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+        cameraProviderFuture.addListener({
+            val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
+            try {
+                cameraProvider.unbindAll()
+
+                val selector = buildSelector()
+                val preview = buildPreview()
+                val camera = if (currMode == MODE_VIDEO) {
+                    val recorder = Recorder.Builder()
+                        .setQualitySelector(QualitySelector.from(videoQuality))
+                        .build()
+                    videoCapture = VideoCapture.withOutput(recorder)
+                    cameraProvider.bindToLifecycle(this, selector, preview, videoCapture)
+                } else {
+                    assert(currMode == MODE_CAPTURE)
+                    imageCapture = buildImageCapture()
+                    if (showLumus) {
+                        val analysis = ImageAnalysis.Builder()
+                            //.setOutputImageFormat(OUTPUT_IMAGE_FORMAT_RGBA_8888)
+                            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                            .build()
+
+                        analysis.setAnalyzer(cameraExecutor, ImageAnalysis.Analyzer { image ->
+                            val result = evalAvgLuminosityAndRotation(image)
+                            image.close()
+                            val lumStr = String.format("%.2f", result.luminosity)
+                            //Log.d(TAG, "rot ${result.rotation}, lum ${result.luminosity}")
+                            runOnUiThread {
+                                viewBinding.statsText.text = "Lum: $lumStr\nRot: ${result.rotation}°"
+                            }
+                        })
+                        cameraProvider.bindToLifecycle(this, selector, preview, imageCapture, analysis)
+                    } else {
+                        cameraProvider.bindToLifecycle(this, selector, preview, imageCapture)
+                    }
+                }
+                applySettingsToCurrentCamera(camera.cameraInfo, camera.cameraControl)
+            } catch (e: Exception) {
+                Log.e(TAG, "Use case binding failed", e)
+            }
         }, ContextCompat.getMainExecutor(this))
     }
 
-    private fun requestPermissions() {
-        activityResultLauncher.launch(REQUIRED_PERMISSIONS)
+    private fun startMultiCamera() {
+        // TODO(davide): Multi camera support won't be available until CameraX 1.3...
+        startNormalCamera()
     }
 
-    private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
-        ContextCompat.checkSelfPermission(baseContext, it) == PackageManager.PERMISSION_GRANTED
-    }
+    private fun startCameraWithExtensions(): Boolean {
+        var result = true
 
-    /*
-    private class LuminosityAnalyzer(private val listener: LumaListener) : ImageAnalysis.Analyzer {
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(applicationContext)
+        cameraProviderFuture.addListener({
+            val cameraProvider = cameraProviderFuture.get()
+            // TODO(davide): This throws a NoClassDefFoundError, which can't be caught...
+            // How can we detect when an extension is available then?
+            val extensionManagerFuture = ExtensionsManager.getInstanceAsync(applicationContext, cameraProvider)
+            //
+            extensionManagerFuture.addListener({
+                val extensionManager = extensionManagerFuture.get()
+                val selector = buildSelector()
+                if (extensionManager.isExtensionAvailable(selector, extensionMode)) {
+                    try {
+                        cameraProvider.unbindAll()
 
-        private fun ByteBuffer.toByteArray(): ByteArray {
-            rewind()    // Rewind the buffer to zero
-            val data = ByteArray(remaining())
-            get(data)   // Copy the buffer into a byte array
-            return data // Return the byte array
-        }
-
-        override fun analyze(image: ImageProxy) {
-
-            val buffer = image.planes[0].buffer
-            val data = buffer.toByteArray()
-            val pixels = data.map { it.toInt() and 0xFF }
-            val luma = pixels.average()
-
-            listener(luma)
-
-            image.close()
-        }
-    }
-    */
-
-    companion object {
-        private const val TAG = "CameraXApp"
-        private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
-        private val REQUIRED_PERMISSIONS =
-            mutableListOf (
-                Manifest.permission.CAMERA,
-                Manifest.permission.RECORD_AUDIO
-            ).apply {
-                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
-                    add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                        val selectorX = extensionManager.getExtensionEnabledCameraSelector(selector, extensionMode)
+                        val preview = buildPreview()
+                        imageCapture = buildImageCapture()
+                        val camera = cameraProvider.bindToLifecycle(this, selectorX, preview, imageCapture)
+                        applySettingsToCurrentCamera(camera.cameraInfo, camera.cameraControl)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Use case binding failed", e)
+                        result = false
+                    }
                 }
-            }.toTypedArray()
+                                               }, ContextCompat.getMainExecutor(this))
+                                         }, ContextCompat.getMainExecutor(this))
+
+        return result
+    }
+
+    private fun startQRScanner() {
+        val cameraController = LifecycleCameraController(baseContext)
+        val preview = viewBinding.viewFinder
+
+        val options = BarcodeScannerOptions.Builder()
+            .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
+            .build()
+        barcodeScanner = BarcodeScanning.getClient(options)
+
+        cameraController.setImageAnalysisAnalyzer(
+            ContextCompat.getMainExecutor(this),
+            MlKitAnalyzer(
+                listOf(barcodeScanner),
+                COORDINATE_SYSTEM_VIEW_REFERENCED,
+                ContextCompat.getMainExecutor(this)
+            ) { result: MlKitAnalyzer.Result? ->
+                val barcodes = result?.getValue(barcodeScanner)
+                if (barcodes == null || barcodes.size == 0 || barcodes.first() == null) {
+                    preview.overlay.clear()
+                    preview.setOnTouchListener { _, _ -> false } // nop
+                    return@MlKitAnalyzer
+                }
+
+                val qrCode = QrCode(barcodes[0])
+                val qrCodeDrawable = QrCodeDrawable(qrCode)
+
+                // TODO(davide): This overwrites the gesture detector...
+                preview.setOnTouchListener(qrCode.touchCallback)
+                preview.overlay.clear()
+                preview.overlay.add(qrCodeDrawable)
+            }
+        )
+
+        cameraController.bindToLifecycle(this)
+        preview.controller = cameraController
+    }
+
+    private fun startCamera() {
+        Log.d(TAG, "START CAMERA")
+
+        //Log.d(TAG, "Current mode is $currMode")
+        if (currMode == MODE_CAPTURE || currMode == MODE_VIDEO) {
+            if (currMode == MODE_CAPTURE && extensionMode != ExtensionMode.NONE) {
+                startCameraWithExtensions()
+            } else {
+                startNormalCamera()
+            }
+        } else if (currMode == MODE_MULTI_CAMERA) {
+            startMultiCamera()
+        } else if (currMode == MODE_QRCODE_SCANNER) {
+            startQRScanner()
+        } else {
+            assert(false)
+        }
+
+        Log.d(TAG, "START CAMERA ENDED")
+    }
+
+    private fun enableInfoTextView(mesg: String) {
+        viewBinding.infoText.apply {
+            text = mesg
+            visibility = View.VISIBLE
+        }
+    }
+
+    private fun disableInfoTextView() {
+        viewBinding.infoText.apply {
+            text = ""
+            visibility = View.INVISIBLE
+        }
+    }
+    private fun fadingMessage(mesg: String, seconds: Int = FADING_MESSAGE_DEFAULT_DELAY) {
+        enableInfoTextView(mesg)
+        object : CountDownTimer(seconds.toLong()*1000, 1000) {
+            override fun onFinish() { disableInfoTextView() }
+            override fun onTick(p0: Long) { }
+        }.start()
+    }
+
+    private fun countdown(seconds: Int) {
+        if (seconds > 0) {
+            enableInfoTextView("$seconds")
+
+            object : CountDownTimer(delayBeforeActionSeconds.toLong()*1000, 1000) {
+                override fun onTick(reamaining_ms: Long) {
+                    viewBinding.infoText.text = "${reamaining_ms / 1000}"
+                }
+
+                override fun onFinish() { disableInfoTextView() }
+            }.start()
+        }
+    }
+
+    private val scaleListener = object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+        override fun onScale(detector: ScaleGestureDetector): Boolean {
+            val camControl = currCamControl
+            val state = currCamInfo?.zoomState?.value
+            if (camControl != null && state != null) {
+                val zoomRatio = state.zoomRatio*detector.scaleFactor
+                if (zoomRatio >= state.minZoomRatio && zoomRatio <= state.maxZoomRatio) {
+                    viewBinding.infoText.text = "${Math.round(state.linearZoom*100)}%"
+                    camControl.setZoomRatio(zoomRatio)
+                }
+            }
+            return true
+        }
+
+        override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
+            scaling = true
+            viewBinding.infoText.visibility = View.VISIBLE
+            return super.onScaleBegin(detector)
+        }
+
+        override fun onScaleEnd(detector: ScaleGestureDetector) {
+            scaling = false
+            viewBinding.infoText.visibility = View.INVISIBLE
+            super.onScaleEnd(detector)
+        }
+    }
+
+    private fun finishFocus() {
+        viewBinding.focusRing.visibility = View.INVISIBLE
+        focusing = false
+    }
+
+    private fun focus(posX: Float, posY: Float) {
+        val camControl = currCamControl
+        if (camControl != null) {
+            if (focusing) {
+                val result = camControl.cancelFocusAndMetering()
+                result.addListener({
+                    finishFocus()
+                }, ContextCompat.getMainExecutor(baseContext))
+            } else {
+                val pointFactory = viewBinding.viewFinder.meteringPointFactory
+                val p1 = pointFactory.createPoint(posX, posY)
+                val action = FocusMeteringAction.Builder(p1, meteringMode)
+                    .setAutoCancelDuration(autoCancelDuration, TimeUnit.SECONDS)
+                    .build()
+
+                viewBinding.focusRing.apply {
+                    x = posX - width / 2
+                    y = posY - height / 2
+                    visibility = View.VISIBLE
+                }
+                focusing = true
+
+                val result = camControl.startFocusAndMetering(action)
+                result.addListener({
+                    //if (!result.get().isFocusSuccessful)
+                    //    Toast.makeText(baseContext, "Unable to focus", Toast.LENGTH_SHORT).show()
+                    finishFocus()
+                }, ContextCompat.getMainExecutor(baseContext))
+            }
+        }
+    }
+
+    private val commonListener = object : GestureDetector.SimpleOnGestureListener() {
+        override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+            focus(e.x, e.y)
+            return true
+        }
+
+        override fun onDoubleTap(e: MotionEvent): Boolean {
+            val camControl = currCamControl
+            val camInfo = currCamInfo
+            if (flashMode != ImageCapture.FLASH_MODE_OFF && camControl != null && camInfo != null) {
+                val newState = (camInfo.torchState.value == TorchState.OFF)
+                camControl.enableTorch(newState)
+            }
+            return true
+        }
+
+        override fun onLongPress(e: MotionEvent) {
+            Log.d("Gesture", "long press $e")
+        }
+
+        override fun onFling(
+            start: MotionEvent,
+            end: MotionEvent,
+            velocityX: Float,
+            velocityY: Float
+        ): Boolean {
+            // TODO(davide): Ignore diagonal swipes
+
+            //Log.d("Gesture", "Horizontal swipe start=(${e1.x}, ${e1.y}) end=(${e2.x}, ${e2.y}) vX=$velocityX Vy=$velocityY")
+            val diffX = end.x - start.x
+            val diffY = end.y - start.y
+            if (abs(diffX) >= abs(diffY)) {
+                if (abs(diffX) > SWIPE_THRESHOLD && abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
+                    if (diffX < 0) {
+                        Log.d("Gesture", "Left swipe")
+
+                        // TODO(davide): Start gallery activity
+                    } else {
+                        Log.d("Gesture", "Right swipe")
+
+                        launchSetting()
+                    }
+                }
+            } else {
+                Log.d("Gesture", "Vertical swipe")
+                // TODO(davide): Increase/decrease exposure index?
+            }
+
+            return true
+        }
     }
 }

@@ -1,9 +1,96 @@
 <resources>
     <string name="app_name">CamerArt</string>
-    <string name="take_photo">Take Photo</string>
-    <string name="start_capture">Start Capture</string>
-    <string name="stop_capture">Stop Capture</string>
-    <string name="mute">Mute</string>
-    <string name="unmute">Unmute</string>
-    <string name="toggle_camera">Switch Camera</string>
+
+    <string name="flash_key" translatable="false">flash</string>
+    <string name="flash_value_off" translatable="false">off</string>
+    <string name="flash_value_on" translatable="false">on</string>
+    <string name="flash_value_auto" translatable="false">auto</string>
+    <string name="flash">Flash</string>
+    <string name="flash_always_off">Always Off</string>
+    <string name="flash_always_on">Always On</string>
+    <string name="flash_on_dark_env">On dark environments</string>
+
+    <string name="capture_key" translatable="false">capmode</string>
+    <string name="capture_value_latency" translatable="false">latency</string>
+    <string name="capture_value_quality" translatable="false">quality</string>
+    <string name="capture_value_zero" translatable="false">zero</string>
+
+    <string name="capture">Mode</string>
+    <string name="minimize_latency">Minimize latency</string>
+    <string name="maximize_quality">Maximize quality</string>
+    <string name="zero_lag">Even less latency</string>
+
+    <string name="jpeg_quality_key" translatable="false">jpeg</string>
+    <string name="jpeg_quality">JPEG Compression Quality</string>
+
+    <string name="rotation_key" translatable="false">rotation</string>
+    <string name="rotation">Force Rotation</string>
+
+    <string name="image_fmt_key" translatable="false">imgfmt</string>
+    <string name="image_fmt">Format</string>
+
+    <string name="extension_key" translatable="false">exts</string>
+    <string name="extension">Extension</string>
+
+    <string name="metering_mode_key" translatable="false">metermode</string>
+    <string name="metering_mode_value_auto_focus" translatable="false">focus</string>
+    <string name="metering_mode_value_auto_exposure" translatable="false">exposure</string>
+    <string name="metering_mode_value_auto_white_balance" translatable="false">whitebalance</string>
+    <string name="metering_mode">Metering Mode</string>
+    <string name="metering_mode_auto_focus">Auto Focus</string>
+    <string name="metering_mode_auto_exposure">Auto Exposure</string>
+    <string name="metering_mode_auto_white_balance">Auto White Balance</string>
+
+    <string name="auto_cancel_duration_key" translatable="false">autocnldur</string>
+    <string name="auto_cancel_duration">Focus Auto Cancel Duration</string>
+    <string name="auto_cancel_duration_summary">Delay in seconds before cancelling focus</string>
+
+    <string name="lumus_key" translatable="false">lumus</string>
+    <string name="lumus_summary">Show average luminosity</string>
+
+    <string name="video_quality_key" translatable="false">videoqual</string>
+
+    <string name="video_duration_key" translatable="false">videodur</string>
+    <string name="video_duration_summary">Limit video recording duration</string>
+
+    <string name="video_stats_key" translatable="false">videostats</string>
+    <string name="video_stats">Show Stats</string>
+    <string name="video_stats_summary">Show recording stats</string>
+
+    <string name="exposure_key" translatable="false">expos</string>
+    <string name="exposure">Exposure</string>
+
+    <string name="scaling_key" translatable="false">scale</string>
+    <string name="scaling_value_center" translatable="false">center</string>
+    <string name="scaling_value_start" translatable="false">start</string>
+    <string name="scaling_value_end" translatable="false">end</string>
+    <string name="scaling">Scaling</string>
+    <string name="scaling_center">Center</string>
+    <string name="scaling_start">Start</string>
+    <string name="scaling_end">End</string>
+
+    <string name="countdown_key" translatable="false">cntdwn</string>
+    <string name="countdown">Countdown</string>
+    <string name="countdown_summary">Seconds to wait before taking the photo or video</string>
+
+    <string name="qrcode_key" translatable="false">qrcode</string>
+    <string name="qrcode">QR Code Scanner</string>
+    <string name="qrcode_summary">Scan QR Codes</string>
+
+    <string name="multi_camera_key" translatable="false">mltcam</string>
+    <string name="multi_camera">Multi Camera</string>
+    <string name="multi_camera_summary">Use front and back camera simultaneously</string>
+
+    <string name="photo_saved_success">Photo saved successfully in </string>
+    <string name="video_saved_success">Video saved successfully in </string>
+    <string name="video_saved_failed">Error during video capture: </string>
+    <string name="paused">Paused</string>
+    <string name="resumed">Resumed</string>
+
+    <string name="settings">Settings</string>
+    <string name="quality">Quality</string>
+    <string name="duration">Duration</string>
+    <string name="photo">Photo</string>
+    <string name="video">Video</string>
+    <string name="misc">Misc</string>
 </resources>

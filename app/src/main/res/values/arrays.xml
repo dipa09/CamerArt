@@ -1,0 +1,79 @@
+<resources>
+    <string-array name="flash_names">
+        <item>@string/flash_always_off</item>
+        <item>@string/flash_always_on</item>
+        <item>@string/flash_on_dark_env</item>
+    </string-array>
+    <string-array name="flash_values">
+        <item>@string/flash_value_off</item>
+        <item>@string/flash_value_on</item>
+        <item>@string/flash_value_auto</item>
+    </string-array>
+
+    <string-array name="capture_names">
+        <item>@string/minimize_latency</item>
+        <item>@string/maximize_quality</item>
+        <item>@string/zero_lag</item>
+    </string-array>
+    <string-array name="capture_values">
+        <item>@string/capture_value_latency</item>
+        <item>@string/capture_value_quality</item>
+        <item>@string/capture_value_zero</item>
+    </string-array>
+
+    <string-array name="rotation_names">
+        <item>0°</item>
+        <item>90°</item>
+        <item>180°</item>
+        <item>270°</item>
+    </string-array>
+    <string-array name="rotation_values">
+        <item>0</item>
+        <item>90</item>
+        <item>180</item>
+        <item>270</item>
+    </string-array>
+
+    <string-array name="scaling_names">
+        <item>@string/scaling_center</item>
+        <item>@string/scaling_start</item>
+        <item>@string/scaling_end</item>
+    </string-array>
+    <string-array name="scaling_values">
+        <item>@string/scaling_value_center</item>
+        <item>@string/scaling_value_start</item>
+        <item>@string/scaling_value_end</item>
+    </string-array>
+
+    <string-array name="empty">
+    </string-array>
+
+    <string-array name="extensions">
+        <item>None</item>
+        <item>Bokeh</item>
+        <item>Night</item>
+        <item>Pretty Face</item>
+        <item>HDR</item>
+        <item>Auto</item>
+    </string-array>
+
+    <string-array name="metering_modes">
+        <item>@string/metering_mode_auto_focus</item>
+        <item>@string/metering_mode_auto_exposure</item>
+        <item>@string/metering_mode_auto_white_balance</item>
+    </string-array>
+    <string-array name="metering_mode_values">
+        <item>@string/metering_mode_value_auto_focus</item>
+        <item>@string/metering_mode_value_auto_exposure</item>
+        <item>@string/metering_mode_value_auto_white_balance</item>
+    </string-array>
+
+    <string-array name="numbers">
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+        <item>5</item>
+    </string-array>
+
+</resources>

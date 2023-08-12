@@ -1,0 +1,66 @@
+<resources>
+    <string name="app_name">CamerArt</string>
+
+    <string name="flash">Torcia</string>
+    <string name="flash_always_off">Sempre spenta</string>
+    <string name="flash_always_on">Sempre accessa</string>
+    <string name="flash_on_dark_env">In ambienti poco luminosi</string>
+
+    <string name="capture">Modalità</string>
+    <string name="minimize_latency">Minima latenza</string>
+    <string name="maximize_quality">Massima qualità</string>
+    <string name="zero_lag">Ancora meno latenza</string>
+
+    <string name="jpeg_quality">Qualità Compressione JPEG</string>
+
+    <string name="rotation">Forza Rotazione</string>
+
+    <string name="image_fmt">Formato</string>
+
+    <string name="extension">Estensioni</string>
+
+    <string name="metering_mode">Metering</string>
+    <string name="metering_mode_auto_focus">Auto Focus</string>
+    <string name="metering_mode_auto_exposure">Auto Esposizione</string>
+    <string name="metering_mode_auto_white_balance">Bilanciamento Bianco</string>
+
+    <string name="auto_cancel_duration">Durata Auto Cancellazione Focus</string>
+    <string name="auto_cancel_duration_summary">Quanti secondi prima di cancellare l\'auto-focus</string>
+
+    <string name="lumus_summary">Mostra luminosità media</string>
+
+    <string name="video_duration_summary">Limita la durata video</string>
+
+    <string name="video_stats">Mostra statistiche</string>
+    <string name="video_stats_summary">Mostra statistiche video durante la ripresa</string>
+
+    <string name="exposure">Esposizione</string>
+
+    <string name="scaling">Scalamento</string>
+    <string name="scaling_center">Centrato</string>
+    <string name="scaling_start">Inizio</string>
+    <string name="scaling_end">Fine</string>
+
+    <string name="countdown">Conto alla rovescia</string>
+    <string name="countdown_summary">Quanti secondi aspettare prima di scattare la foto o video</string>
+
+    <string name="qrcode">Scanner QR Code</string>
+    <string name="qrcode_summary">Scansiona QR Code</string>
+
+    <string name="multi_camera">Camere Multiple</string>
+    <string name="multi_camera_summary">Usa la camera anteriore e posteriore contemporaneamente</string>
+
+    <string name="photo_saved_success">Foto salvata correttament in </string>
+    <string name="video_saved_success">Video salvato correttamente in </string>
+    <string name="video_saved_failed">Errore durante la ripresa video: </string>
+    <string name="paused">In Pausa</string>
+    <string name="resumed">Riprendi</string>
+
+    <string name="settings">Opzioni</string>
+    <string name="quality">Qualità</string>
+    <string name="duration">Durata</string>
+    <string name="photo">Foto</string>
+    <string name="video">Video</string>
+    <string name="misc">Misc</string>
+
+</resources>
