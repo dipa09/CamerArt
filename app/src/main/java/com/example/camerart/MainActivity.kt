@@ -59,6 +59,7 @@ class MainActivity : AppCompatActivity() {
             ).apply {
                 if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
                     add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    add(Manifest.permission.READ_EXTERNAL_STORAGE)
                 }
             }.toTypedArray()
 
@@ -232,6 +233,7 @@ class MainActivity : AppCompatActivity() {
         viewBinding.muteButton.setOnClickListener { toggleAudio() }
         viewBinding.settingsButton.setOnClickListener { launchSetting() }
         viewBinding.playButton.setOnClickListener { controlVideoRecording() }
+        viewBinding.galleryButton.setOnClickListener { launchGallery() }
         if (cameraFeatures.hasFront) {
             viewBinding.cameraButton.setOnClickListener { toggleCamera() }
         } else {
@@ -282,6 +284,10 @@ class MainActivity : AppCompatActivity() {
         this.startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this).toBundle())
     }
 
+    private fun launchGallery() {
+        val intent = Intent(this, GalleryActivity::class.java)
+        this.startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this).toBundle())
+    }
     private fun toggleMode(prefValue: Boolean, newState: Int, changeCount: Int): Int {
         val newMode = if (prefValue)
             newState
