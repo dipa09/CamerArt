@@ -24,7 +24,7 @@ class GalleryActivity : AppCompatActivity() {
 
         imageRecyclerView = findViewById(R.id.imageRecyclerView)
         imageRecyclerView.layoutManager = GridLayoutManager(this, 2)
-        imageGalleryAdapter = ImageGalleryAdapter(imageUris)
+        imageGalleryAdapter = ImageGalleryAdapter(this, imageUris)
         imageRecyclerView.adapter = imageGalleryAdapter;
 
     }
@@ -47,8 +47,8 @@ class GalleryActivity : AppCompatActivity() {
                 imageUris.add(imagePath)
             }
         }
-        //ritorna lista di string con gli uri (sono String non URI)
-        return imageUris.asReversed().subList(0,4)
+        //ritorna le ultime 5 immagini prese
+        return imageUris.asReversed().subList(0,5)
     }
 
 }
