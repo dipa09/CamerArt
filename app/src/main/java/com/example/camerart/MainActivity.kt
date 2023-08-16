@@ -286,6 +286,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun launchGallery() {
         val intent = Intent(this, GalleryActivity::class.java)
+
         this.startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this).toBundle())
     }
     private fun toggleMode(prefValue: Boolean, newState: Int, changeCount: Int): Int {

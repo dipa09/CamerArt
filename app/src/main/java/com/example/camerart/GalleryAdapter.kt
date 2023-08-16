@@ -25,7 +25,7 @@ class ImageGalleryAdapter(private val imageUris: List<String>) :
     override fun onBindViewHolder(holder: ImageViewHolder, position: Int) {
         val imageUri = imageUris[position]
         val uri = imageUri.toUri()
-        // Load and display the image from the URI
+        // Luca: se passo il bitmap a imageView tramite setImageBitmap, le immagini ruotano 90 gradi
         //val bitmap = BitmapFactory.decodeFile(imageUri)
         holder.imageView.setImageURI(uri)
 
@@ -52,8 +52,8 @@ class VideoGalleryAdapter(private val videos: List<VideoType>) :
     override fun onBindViewHolder(holder: ImageViewHolder, position: Int) {
         val video = videos[position]
         val thumbnail = video.getVideoThumbnail()
-        // Load and display the image from the URI
-        //val bitmap = BitmapFactory.decodeFile(imageUri)
+        //non ho trovato altri modi decenti di prendere il thumbnail di un video oltre a questa funzione
+        //non è efficente ma sembra funzionare a emulatore
         holder.imageView.setImageBitmap(thumbnail)
 
     }

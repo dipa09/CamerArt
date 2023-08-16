@@ -217,5 +217,9 @@ fun stringToIntOr0(s: String): Int {
 }
 
 data class VideoType(val uri : String , val thumbnail : Bitmap?){
+
+    //data class per tenere traccia degli uri deivideo.
+    //La creazione thumbnail è lasciata a GalleryActivity
     fun getVideoThumbnail() : Bitmap? {return thumbnail}
+
 }

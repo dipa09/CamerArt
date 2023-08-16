@@ -1,13 +1,10 @@
 package com.example.camerart
 
-import android.content.ContentResolver
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
-import android.net.Uri
 import android.os.Bundle
-import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -42,7 +39,8 @@ class GalleryActivity : AppCompatActivity() {
             videos.add(video)
         }
 
-
+        //2 recyclerview per distinguere i casi di foto e video dato che devo passare
+        //2 operazioni di onBindViewHodlder diverse. Era il modo che creava meno mal di testa
         imageRecyclerView = findViewById(R.id.imageRecyclerView)
         imageRecyclerView.layoutManager = GridLayoutManager(this, 3)
         imageGalleryAdapter = ImageGalleryAdapter(imageUris)
@@ -50,6 +48,8 @@ class GalleryActivity : AppCompatActivity() {
 
         videoRecyclerView = findViewById(R.id.videoRecyclerView)
         videoRecyclerView.layoutManager = GridLayoutManager(this, 3)
+        //passo lista di data class VideoType per tenere traccia dell uri, nel caso vogliamo fare
+        //un onClickListener
         videoGalleryAdapter = VideoGalleryAdapter(videos)
         videoRecyclerView.adapter = videoGalleryAdapter;
     }
@@ -57,6 +57,7 @@ class GalleryActivity : AppCompatActivity() {
     private fun getImages(): List<String> {
         val projection = arrayOf(MediaStore.Images.Media.DATA)
         val imageUris = mutableListOf<String>()
+        //uso use per non avere problemi con il cursor e chiuderlo in automatico quando finisce
         contentResolver.query(
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
             projection,
@@ -71,12 +72,14 @@ class GalleryActivity : AppCompatActivity() {
                 imageUris.add(imagePath)
             }
         }
-
+        //ritorna lista di string con gli uri (sono String non URI)
         return imageUris
     }
     private fun getVideos(): List<String> {
         val projection = arrayOf(MediaStore.Video.Media.DATA)
         val videoUris = mutableListOf<String>()
+
+        //uso use per non avere problemi con il cursor e chiuderlo in automatico quando finisce
         contentResolver.query(
             MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
             projection,
@@ -91,7 +94,7 @@ class GalleryActivity : AppCompatActivity() {
                 videoUris.add(videoPath)
             }
         }
-
+        //ritorna lista di string con gli uri (sono String non URI)
         return videoUris
     }
 
@@ -99,6 +102,9 @@ class GalleryActivity : AppCompatActivity() {
         try {
             val mediaMetadataRetriever = MediaMetadataRetriever()
             mediaMetadataRetriever.setDataSource(path)
+
+            //nel return getScaledFrameAtTime() potrebbe migliorare la situazione dato che
+            //frameAtTime prende un frame a full risoluzione
             return mediaMetadataRetriever.frameAtTime
         } catch (ex: Exception) {
             Toast
