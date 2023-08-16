@@ -8,7 +8,6 @@ import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -16,7 +15,6 @@ import android.os.CountDownTimer
 import android.provider.MediaStore
 import android.util.Log
 import android.view.*
-import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -40,13 +38,11 @@ import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import java.io.IOException
-import java.lang.Integer.min
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
-import kotlin.collections.ArrayList
 import kotlin.collections.HashSet
 import kotlin.math.abs
 
@@ -62,6 +58,7 @@ class MainActivity : AppCompatActivity() {
             ).apply {
                 if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
                     add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    add(Manifest.permission.READ_EXTERNAL_STORAGE)
                 }
             }.toTypedArray()
 
@@ -236,6 +233,7 @@ class MainActivity : AppCompatActivity() {
         viewBinding.muteButton.setOnClickListener { toggleAudio() }
         viewBinding.settingsButton.setOnClickListener { launchSetting() }
         viewBinding.playButton.setOnClickListener { controlVideoRecording() }
+        viewBinding.galleryButton.setOnClickListener { launchGallery() }
         if (cameraFeatures.hasFront) {
             viewBinding.cameraButton.setOnClickListener { toggleCamera() }
         } else {
@@ -286,6 +284,10 @@ class MainActivity : AppCompatActivity() {
         this.startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this).toBundle())
     }
 
+    private fun launchGallery() {
+        val intent = Intent(this, GalleryActivity::class.java)
+        this.startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this).toBundle())
+    }
     private fun flashModeFromPreference(prefValue: String): Int {
         return when (prefValue) {
             resources.getString(R.string.flash_value_on) -> ImageCapture.FLASH_MODE_ON
