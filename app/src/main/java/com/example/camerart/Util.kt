@@ -6,6 +6,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.DialogInterface
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
@@ -211,4 +212,8 @@ fun stringToIntOr0(s: String): Int {
     } catch (exc: NumberFormatException) {
         0
     }
+}
+
+data class VideoType(val uri : String , val thumbnail : Bitmap?){
+    fun getVideoThumbnail() : Bitmap? {return thumbnail}
 }
