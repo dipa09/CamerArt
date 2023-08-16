@@ -286,21 +286,6 @@ class MainActivity : AppCompatActivity() {
         this.startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this).toBundle())
     }
 
-    private fun toggleMode(prefValue: Boolean, newState: Int, changeCount: Int): Int {
-        val newMode = if (prefValue)
-            newState
-        else
-            currMode
-
-        var newChangeCount = changeCount
-        if (newMode != currMode) {
-            currMode = newMode
-            ++newChangeCount
-        }
-
-        return newChangeCount
-    }
-
     private fun flashModeFromPreference(prefValue: String): Int {
         return when (prefValue) {
             resources.getString(R.string.flash_value_on) -> ImageCapture.FLASH_MODE_ON
@@ -322,7 +307,7 @@ class MainActivity : AppCompatActivity() {
         return mode
     }
 
-    fun meteringModeFromPreference(name: CharSequence): Int {
+    private fun meteringModeFromPreference(name: CharSequence): Int {
         return when (name) {
             resources.getString(R.string.metering_mode_value_auto_focus) ->
                 FocusMeteringAction.FLAG_AF
@@ -334,7 +319,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun filterTypeFromPreference(filterValue: String): Int {
+    private fun filterTypeFromPreference(filterValue: String): Int {
         return when (filterValue) {
             resources.getString(R.string.filter_value_nogreen) -> FILTER_TYPE_NO_GREEN
             resources.getString(R.string.filter_value_grey) -> FILTER_TYPE_GREY
@@ -353,6 +338,9 @@ class MainActivity : AppCompatActivity() {
     // a random exception.
     private fun loadPreferences(onCreate: Boolean): Boolean {
         var changeCount = 0
+
+        var gotVideo = false
+        var gotQR = false
 
         val sharedPreference = PreferenceManager.getDefaultSharedPreferences(this)
         var newCaptureMode: Int = captureMode
@@ -452,14 +440,7 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 resources.getString(R.string.lumus_key) -> {
-                    val newShowLumus = pref.value as Boolean
-
-                    if (newShowLumus != showLumus) {
-                        showLumus = newShowLumus
-                        currMode = MODE_CAPTURE
-                        ++changeCount
-                    }
-
+                    showLumus = pref.value as Boolean
                     if (showLumus)
                         viewBinding.statsText.visibility = View.VISIBLE
                     else
@@ -473,7 +454,7 @@ class MainActivity : AppCompatActivity() {
 
                 // TODO(davide): Temporary UI
                 "pref_use_video_temp" -> {
-                    changeCount = toggleMode(pref.value as Boolean, MODE_VIDEO, changeCount)
+                    gotVideo = pref.value as Boolean
                 }
 
                 resources.getString(R.string.video_quality_key) -> {
@@ -490,14 +471,12 @@ class MainActivity : AppCompatActivity() {
                 resources.getString(R.string.countdown_key)      -> { delayBeforeActionSeconds = pref.value as Int }
 
                 resources.getString(R.string.multi_camera_key) -> {
-                    changeCount = toggleMode(pref.value as Boolean, MODE_MULTI_CAMERA, changeCount)
+                    //changeCount = toggleMode(pref.value as Boolean, MODE_MULTI_CAMERA, changeCount)
                 }
 
                 resources.getString(R.string.qrcode_key) -> {
-                    // TODO(davide): There is a bug while switching back from QRCODE mode,
-                    // it doesn't make sense to fix, because it can be avoided by changing the UI
-                    // which we are going to do anyway.
-                    changeCount = toggleMode(pref.value as Boolean, MODE_QRCODE_SCANNER, changeCount)
+                    gotQR = pref.value as Boolean
+                    //changeCount = toggleMode(pref.value as Boolean, MODE_QRCODE_SCANNER, changeCount)
                 }
             }
         }
@@ -506,6 +485,18 @@ class MainActivity : AppCompatActivity() {
         if (newCaptureMode != captureMode) {
             jpegQuality = JPEG_QUALITY_UNINITIALIZED
             captureMode = newCaptureMode
+            ++changeCount
+        }
+
+        val newMode = if (gotVideo) {
+            MODE_VIDEO
+        } else if (gotQR) {
+            MODE_QRCODE_SCANNER
+        } else {
+            MODE_CAPTURE
+        }
+        if (newMode != currMode) {
+            currMode = newMode
             ++changeCount
         }
 
