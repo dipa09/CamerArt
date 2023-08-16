@@ -12,8 +12,6 @@
 - Setting Fragment
   - Set output folder for saving photos and videos?
 
-- Use string resources for UI stuff
-
 - Setting UI
   - Overflow menu
     - Info about gestures

@@ -3,6 +3,7 @@ package com.example.camerart
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
+import android.util.Log
 import androidx.camera.core.ImageProxy
 import java.io.IOException
 import java.io.OutputStream
@@ -14,6 +15,8 @@ class Image(imageInit: ImageProxy, formatInit: String) {
     fun write(out: OutputStream) {
         val buffer = image.planes[0].buffer
         val bytes = ByteArray(buffer.remaining())
+
+        Log.d("XX", "Image format is ${image.format}")
 
         if (format == MainActivity.MIME_TYPE_JPEG) {
             out.write(bytes)

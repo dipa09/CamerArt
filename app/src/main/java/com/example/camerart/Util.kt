@@ -6,12 +6,11 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.DialogInterface
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
-import androidx.camera.core.CameraInfo
 import androidx.camera.core.FocusMeteringAction
-import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageProxy
 import androidx.camera.extensions.ExtensionMode
 import androidx.camera.video.MediaStoreOutputOptions
@@ -213,4 +212,8 @@ fun stringToIntOr0(s: String): Int {
     } catch (exc: NumberFormatException) {
         0
     }
+}
+
+data class VideoType(val uri : String , val thumbnail : Bitmap?){
+    fun getVideoThumbnail() : Bitmap? {return thumbnail}
 }
