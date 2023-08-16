@@ -35,7 +35,7 @@ class ImageGalleryAdapter(private val imageUris: List<String>) :
         return imageUris.size
     }
 }
-
+/*
 class VideoGalleryAdapter(private val videos: List<VideoType>) :
     RecyclerView.Adapter<VideoGalleryAdapter.ImageViewHolder>() {
 
@@ -61,4 +61,8 @@ class VideoGalleryAdapter(private val videos: List<VideoType>) :
     override fun getItemCount(): Int {
         return videos.size
     }
+
+
 }
+
+ */
