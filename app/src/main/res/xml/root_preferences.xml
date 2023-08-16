@@ -68,6 +68,13 @@
             app:summary="@string/lumus_summary"
             app:defaultValue="false" />
 
+        <DropDownPreference
+            app:key="@string/filter_key"
+            app:title="@string/filter"
+            app:entries="@array/filter_names"
+            app:entryValues="@array/filter_values"
+            app:summary="@string/filter_summary" />
+
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/video">

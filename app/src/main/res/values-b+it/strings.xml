@@ -28,6 +28,18 @@
     <string name="auto_cancel_duration_summary">Quanti secondi prima di cancellare l\'auto-focus</string>
 
     <string name="lumus_summary">Mostra luminosità media</string>
+    <string name="filter">Filtri</string>
+    <string name="filter_summary">Applica un filtro immagine</string>
+    <string name="filter_name_nogreen">Niente Verde</string>
+    <string name="filter_name_grey">Grigio</string>
+    <string name="filter_name_sepia">Seppia</string>
+    <string name="filter_name_sketch">Disegno</string>
+    <string name="filter_name_negative">Negativo</string>
+    <string name="filter_name_blur">Sfocato</string>
+    <string name="filter_name_mblur">Movimentato</string>
+    <string name="filter_name_sharpen">Sharpen</string>
+    <string name="filter_name_aqua">Acqua</string>
+
 
     <string name="video_duration_summary">Limita la durata video</string>
 
@@ -50,12 +62,13 @@
     <string name="multi_camera">Camere Multiple</string>
     <string name="multi_camera_summary">Usa la camera anteriore e posteriore contemporaneamente</string>
 
-    <string name="photo_saved_success">Foto salvata correttament in </string>
-    <string name="video_saved_success">Video salvato correttamente in </string>
+    <string name="photo_saved_success">Foto salvata correttament in</string>
+    <string name="video_saved_success">Video salvato correttamente in</string>
     <string name="video_saved_failed">Errore durante la ripresa video: </string>
     <string name="paused">In Pausa</string>
     <string name="resumed">Riprendi</string>
 
+    <string name="none">Nessuno</string>
     <string name="settings">Opzioni</string>
     <string name="quality">Qualità</string>
     <string name="duration">Durata</string>
