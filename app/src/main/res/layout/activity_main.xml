@@ -1,22 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <FrameLayout
-        android:id="@+id/container"
+    <androidx.camera.view.PreviewView
+        android:id="@+id/viewFinder"
+        android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_width="match_parent">
-        <androidx.camera.view.PreviewView
-            android:id="@+id/viewFinder"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            />
+        />
 
-    </FrameLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -63,9 +58,9 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:background="@android:color/transparent"
         android:orientation="horizontal"
-        android:translationY="600dp"
-        android:background="@android:color/transparent">
+        android:translationY="600dp">
 
         <Space
             android:layout_width="0dp"
@@ -76,7 +71,8 @@
             android:id="@+id/mute_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@android:drawable/ic_btn_speak_now" />
+            android:background="@android:drawable/ic_btn_speak_now"
+            android:visibility="invisible" />
 
         <Space
             android:layout_width="0dp"
@@ -87,7 +83,8 @@
             android:id="@+id/play_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@android:drawable/ic_media_pause" />
+            android:background="@android:drawable/ic_media_pause"
+            android:visibility="invisible" />
 
         <Space
             android:layout_width="0dp"
@@ -110,8 +107,8 @@
 
         <ImageButton
             android:id="@+id/camera_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:layout_centerHorizontal="true"
             android:layout_centerVertical="true"
             android:background="@drawable/baseline_cameraswitch_24" />
@@ -123,8 +120,8 @@
 
         <ImageButton
             android:id="@+id/photo_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
             android:layout_centerHorizontal="true"
             android:layout_centerVertical="true"
             android:background="@drawable/ic_shutter"
@@ -138,8 +135,8 @@
 
         <ImageButton
             android:id="@+id/settings_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:background="@android:drawable/ic_menu_manage"
             android:contentDescription="@string/settings" />
 
@@ -161,25 +158,27 @@
             android:layout_height="1dp"
             android:layout_weight="1" />
 
-        <TextView
-            android:id="@+id/textVideo"
+        <Button
+            android:id="@+id/btnVideo"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:clickable="true"
             android:text="Video"
             android:textAlignment="center"
-            android:textColor="#FFFFFF" />
+            android:textColor="#FFFFFF"
+            android:background="@android:color/transparent"/>
 
-        <TextView
-            android:id="@+id/textFoto"
+        <Button
+            android:id="@+id/btnFoto"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:clickable="true"
             android:text="Foto"
             android:textAlignment="center"
-            android:textColor="#FFFFFF" />
+            android:textColor="#FFFFFF"
+            android:background="@android:color/transparent"/>
 
         <Space
             android:layout_width="0dp"
@@ -207,4 +206,4 @@
         android:background="@drawable/shape_ring"
         android:visibility="invisible" />
 
-</RelativeLayout>
+</FrameLayout>
