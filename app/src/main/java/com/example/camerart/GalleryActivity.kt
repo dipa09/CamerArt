@@ -1,6 +1,7 @@
 package com.example.camerart
 
 
+import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import androidx.appcompat.app.AppCompatActivity
@@ -32,14 +33,25 @@ class GalleryActivity : AppCompatActivity() {
     private fun getImages(): List<String> {
         val projection = arrayOf(MediaStore.Images.Media.DATA)
         val imageUris = mutableListOf<String>()
+        val collection =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            MediaStore.Images.Media.getContentUri(
+                MediaStore.VOLUME_EXTERNAL
+            )
+        } else {
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+        }
         //uso use per non avere problemi con il cursor e chiuderlo in automatico quando finisce
-        contentResolver.query(
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+        val cursor =
+
+            contentResolver.query(
+            collection,
             projection,
             null,
             null,
             null
-        )?.use {
+            )
+        cursor?.use {
             val columnIndex = it.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
 
             while (it.moveToNext()) {
@@ -47,8 +59,9 @@ class GalleryActivity : AppCompatActivity() {
                 imageUris.add(imagePath)
             }
         }
+
         //ritorna le ultime 5 immagini prese
-        return imageUris.asReversed().subList(0,5)
+        return imageUris.asReversed()
     }
 
 }

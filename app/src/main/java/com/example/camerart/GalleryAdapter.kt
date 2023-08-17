@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.RecyclerView
 import android.graphics.BitmapFactory
 import androidx.core.net.toUri
 import com.bumptech.glide.Glide
+import java.io.File
 
 class ImageGalleryAdapter(context: Context, private val imageUris: List<String>) :
     RecyclerView.Adapter<ImageGalleryAdapter.ImageViewHolder>() {
@@ -29,7 +30,6 @@ class ImageGalleryAdapter(context: Context, private val imageUris: List<String>)
         //uso glide per avere una lib efficente per caricare le immagini
         Glide.with(context)
             .load(imageUri)
-            .centerCrop()
             .into(holder.imageView)
     }
 

@@ -56,10 +56,11 @@ class MainActivity : AppCompatActivity() {
             mutableListOf(
                 Manifest.permission.CAMERA,
                 Manifest.permission.RECORD_AUDIO,
-                Manifest.permission.READ_EXTERNAL_STORAGE
+
             ).apply {
                 if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
                     add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    add(Manifest.permission.READ_EXTERNAL_STORAGE)
                 }
             }.toTypedArray()
 
@@ -1009,7 +1010,7 @@ class MainActivity : AppCompatActivity() {
                     if (diffX < 0) {
                         Log.d("Gesture", "Left swipe")
 
-                        // TODO(davide): Start gallery activity
+                        launchGallery()
                     } else {
                         Log.d("Gesture", "Right swipe")
 
