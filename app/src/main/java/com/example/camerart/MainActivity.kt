@@ -127,7 +127,7 @@ class MainActivity : AppCompatActivity() {
     private var showVideoStats: Boolean = false
 
     // Preview
-    private var scaleType: PreviewView.ScaleType = PreviewView.ScaleType.FIT_CENTER
+    private var scaleType: PreviewView.ScaleType = PreviewView.ScaleType.FILL_CENTER
 
     private var requestedFormat: String = MIME_TYPE_JPEG
     private var exposureCompensationIndex: Int = 0
@@ -234,6 +234,9 @@ class MainActivity : AppCompatActivity() {
         viewBinding.settingsButton.setOnClickListener { launchSetting() }
         viewBinding.playButton.setOnClickListener { controlVideoRecording() }
         viewBinding.galleryButton.setOnClickListener { launchGallery() }
+        //CHIAMA ALTRA FUNZIONE
+        viewBinding.btnFoto.setOnClickListener{ currMode= MODE_CAPTURE }
+        viewBinding.btnVideo.setOnClickListener { currMode = MODE_VIDEO }
         if (cameraFeatures.hasFront) {
             viewBinding.cameraButton.setOnClickListener { toggleCamera() }
         } else {
@@ -256,8 +259,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun toggleAudio() {
         audioEnabled = !audioEnabled
-        val alpha = if (audioEnabled) 0xff/2 else 0xff
-        viewBinding.muteButton.background.alpha = alpha
+        //val alpha =
+        if (audioEnabled) viewBinding.muteButton.setBackgroundResource(R.drawable.baseline_mic_none_24)
+        else viewBinding.muteButton.setBackgroundResource(R.drawable.baseline_mic_off_24)
+        //viewBinding.muteButton.background.alpha = alpha
     }
 
     private fun toggleCamera() {
@@ -407,9 +412,9 @@ class MainActivity : AppCompatActivity() {
 
                 resources.getString(R.string.scaling_key) -> {
                     val newScaleType = when (pref.value) {
-                        resources.getString(R.string.scaling_value_center) -> PreviewView.ScaleType.FIT_CENTER
-                        resources.getString(R.string.scaling_value_start)  -> PreviewView.ScaleType.FIT_START
-                        resources.getString(R.string.scaling_value_end)    -> PreviewView.ScaleType.FIT_END
+                        resources.getString(R.string.scaling_value_center) -> PreviewView.ScaleType.FILL_CENTER
+                        resources.getString(R.string.scaling_value_start)  -> PreviewView.ScaleType.FILL_START
+                        resources.getString(R.string.scaling_value_end)    -> PreviewView.ScaleType.FILL_END
                         else -> scaleType
                     }
 
@@ -619,9 +624,11 @@ class MainActivity : AppCompatActivity() {
         if (rec != null) {
             if (playing) {
                 rec.pause()
+                viewBinding.playButton.setBackgroundResource(R.drawable.baseline_play_arrow_24)
                 Toast.makeText(baseContext, resources.getString(R.string.paused), Toast.LENGTH_SHORT).show()
             } else {
                 rec.resume()
+                viewBinding.playButton.setBackgroundResource(R.drawable.baseline_pause_24)
                 Toast.makeText(baseContext, resources.getString(R.string.resumed), Toast.LENGTH_SHORT).show()
             }
             playing = !playing
@@ -636,6 +643,7 @@ class MainActivity : AppCompatActivity() {
             recording = null
             viewBinding.playButton.visibility = View.INVISIBLE
             viewBinding.muteButton.visibility = View.VISIBLE
+            viewBinding.photoButton.setBackgroundResource(R.drawable.baseline_play_circle_24)
             viewBinding.statsText.apply {
                 text = ""
                 visibility = View.INVISIBLE
@@ -655,7 +663,7 @@ class MainActivity : AppCompatActivity() {
         if (stopRecording())
             return
 
-        viewBinding.muteButton.visibility = View.INVISIBLE
+        //viewBinding.muteButton.visibility = View.INVISIBLE
 
         var recDurationNanos = Long.MAX_VALUE
 
@@ -677,6 +685,8 @@ class MainActivity : AppCompatActivity() {
             }
             .start(ContextCompat.getMainExecutor(this)) { recordEvent -> handleRecordEvent(recordEvent, recDurationNanos) }
 
+        viewBinding.photoButton.setBackgroundResource(R.drawable.baseline_stop_circle_24)
+        viewBinding.muteButton.visibility = View.VISIBLE
         viewBinding.playButton.visibility = View.VISIBLE
         playing = true
     }
@@ -780,6 +790,9 @@ class MainActivity : AppCompatActivity() {
                     videoCapture = VideoCapture.withOutput(recorder)
                     cameraProvider.bindToLifecycle(this, selector, preview, videoCapture)
                 } else {
+                    viewBinding.photoButton.setBackgroundResource(R.drawable.ic_shutter)
+                    viewBinding.muteButton.visibility = View.INVISIBLE
+                    viewBinding.playButton.visibility = View.INVISIBLE
                     assert(currMode == MODE_CAPTURE)
                     imageCapture = buildImageCapture()
                     if (showLumus) {
