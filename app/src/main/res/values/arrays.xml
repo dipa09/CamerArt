@@ -87,6 +87,7 @@
         <item>@string/filter_name_mblur</item>
         <item>@string/filter_name_sharpen</item>
         <item>@string/filter_name_aqua</item>
+        <item>@string/filter_name_faded</item>
     </string-array>
     <string-array name="filter_values">
         <item>none</item>
@@ -99,6 +100,7 @@
         <item>@string/filter_value_mblur</item>
         <item>@string/filter_value_sharpen</item>
         <item>@string/filter_value_aqua</item>
+        <item>@string/filter_value_faded</item>
     </string-array>
 
 </resources>

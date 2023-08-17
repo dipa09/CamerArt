@@ -29,6 +29,8 @@ class GalleryActivity : AppCompatActivity() {
 
         val imageUris = getImages()
         val videoUris = getVideos()
+        //Log.d("XX", "Got ${videoUris.size} videos")
+
         val videos = mutableListOf<VideoType>()
 
         for( v in videoUris){
@@ -38,6 +40,7 @@ class GalleryActivity : AppCompatActivity() {
             videos.add(video)
         }
 
+        //Log.d("XX", "Create video thumbs ${videos.size}")
 
         imageRecyclerView = findViewById(R.id.imageRecyclerView)
         imageRecyclerView.layoutManager = GridLayoutManager(this, 3)
@@ -68,6 +71,7 @@ class GalleryActivity : AppCompatActivity() {
             }
         }
 
+        //Log.d("XX", "Imaeg Uris: ${imageUris.size} -- $imageUris")
         return imageUris
     }
     private fun getVideos(): List<String> {

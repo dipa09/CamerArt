@@ -59,6 +59,7 @@
     <string name="filter_value_mblur" translatable="false">mblur</string>
     <string name="filter_value_sharpen" translatable="false">shrp</string>
     <string name="filter_value_aqua" translatable="false">aqua</string>
+    <string name="filter_value_faded" translatable="false">faded</string>
     <string name="filter">Filters</string>
     <string name="filter_summary">Apply an image filter</string>
     <string name="filter_name_nogreen">No Green</string>
@@ -70,6 +71,7 @@
     <string name="filter_name_mblur">Motion Blur</string>
     <string name="filter_name_sharpen">Sharpen</string>
     <string name="filter_name_aqua">Aqua</string>
+    <string name="filter_name_faded">Faded</string>
 
     <string name="video_quality_key" translatable="false">videoqual</string>
 
@@ -106,6 +108,7 @@
 
     <string name="photo_saved_success">Photo saved successfully in</string>
     <string name="video_saved_success">Video saved successfully in</string>
+    <string name="photo_error">Error while taking the photo</string>
     <string name="video_saved_failed">Error during video capture: </string>
     <string name="paused">Paused</string>
     <string name="resumed">Resumed</string>

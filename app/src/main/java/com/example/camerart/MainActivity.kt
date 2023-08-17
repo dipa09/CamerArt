@@ -184,6 +184,8 @@ class MainActivity : AppCompatActivity() {
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
         if (prefs.getBoolean(ON_FIRST_RUN, true)) {
             prefs.edit().putBoolean(ON_FIRST_RUN, false).apply()
+            // TODO(davide): Set JPEG quality to default, otherwise it will be 0 the first
+            // time that settings get opened
 
             Thread {
                 if (!deviceHasBeenTested()) {
@@ -328,9 +330,11 @@ class MainActivity : AppCompatActivity() {
             resources.getString(R.string.filter_value_sepia) -> FILTER_TYPE_SEPIA
             resources.getString(R.string.filter_value_sketch) -> FILTER_TYPE_SKETCH
             resources.getString(R.string.filter_value_negative) -> FILTER_TYPE_NEGATIVE
+            resources.getString(R.string.filter_value_blur) -> FILTER_TYPE_BLUR
             resources.getString(R.string.filter_value_mblur) -> FILTER_TYPE_MOTION_BLUR
             resources.getString(R.string.filter_value_sharpen) -> FILTER_TYPE_SHARPEN
             resources.getString(R.string.filter_value_aqua) -> FILTER_TYPE_AQUA
+            resources.getString(R.string.filter_value_faded) -> FILTER_TYPE_FADED
             else -> FILTER_TYPE_NONE
         }
     }
@@ -514,84 +518,137 @@ class MainActivity : AppCompatActivity() {
         currCamControl = camControl
     }
 
-    private fun showPhotoSaveAt(uri: Uri) {
+    private fun showPhotoSavedAt(uri: Uri)
+    {
         val msg = resources.getString(R.string.photo_saved_success) + " $uri"
         Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
+
         Log.d(TAG, msg)
     }
 
+    private fun showPhotoError(ex: Exception)
+    {
+        val msg = resources.getString(R.string.photo_error)
+        Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
+
+        Log.e(TAG, "Photo capture failed: ${ex.message}")
+    }
+
     // TODO(davide): Add more metadata. Location, producer, ...
-    private fun takePhoto() {
+    private fun takePhoto()
+    {
         val imageCapture = imageCapture ?: return
 
-        val name = SimpleDateFormat(FILENAME_FORMAT, Locale.US).format(System.currentTimeMillis())
-        if (filterType == FILTER_TYPE_NONE && requestedFormat == MIME_TYPE_JPEG) {
+        countdown(delayBeforeActionSeconds)
+
+        val contentValues = makeContentValues(
+            SimpleDateFormat(FILENAME_FORMAT, Locale.US).format(System.currentTimeMillis()),
+            requestedFormat)
+        if (filterType == FILTER_TYPE_NONE && requestedFormat == MIME_TYPE_JPEG)
+        {
             val outputOptions = ImageCapture.OutputFileOptions
                 .Builder(contentResolver,
                     MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                    makeContentValues(name, MIME_TYPE_JPEG))
+                    contentValues)
                 .build()
-
-            countdown(delayBeforeActionSeconds)
-
             imageCapture.takePicture(
                 outputOptions,
                 ContextCompat.getMainExecutor(this),
-                object : ImageCapture.OnImageSavedCallback {
-                    override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                object : ImageCapture.OnImageSavedCallback
+                {
+                    override fun onImageSaved(output: ImageCapture.OutputFileResults)
+                    {
+                        // NOTE(davide): How can it saves the image without having the URI?
                         val uri = output.savedUri
                         if (uri != null)
-                            showPhotoSaveAt(uri)
+                            showPhotoSavedAt(uri)
                     }
 
-                    override fun onError(exc: ImageCaptureException) {
-                        Log.e(TAG, "Photo capture failed: ${exc.message}", exc)
-                    }
+                    override fun onError(ex: ImageCaptureException) { showPhotoError(ex) }
                 }
             )
-        } else {
-            val contentValues = makeContentValues(name, requestedFormat)
+        }
+        else
+        {
             imageCapture.takePicture(
                 ContextCompat.getMainExecutor(this),
                 object : ImageCapture.OnImageCapturedCallback() {
-                    override fun onCaptureSuccess(imageProxy: ImageProxy) {
+                    override fun onCaptureSuccess(imageProxy: ImageProxy)
+                    {
                         // NOTE(davide): Apparently there is no way to tell CameraX to NOT compress
                         // the image in JPEG.
 
+
                         var uri: Uri? = null
-                        try {
-                            val destBitmap = applyFilterToBitmap(imageProxy.toBitmap(), filterType)
+                        try
+                        {
+                            val destBitmap = filterBitmap(imageProxy.toBitmap(), filterType)
+                            /*
+                            val filterThread = FilterThread()
+                            filterThread.sourceBitmap = imageProxy.toBitmap()
+                            filterThread.filterType = filterType
+                            filterThread.start()
+                            filterThread.join(2000)
+                            val destBitmap = filterThread.destBitmap
+                             */
+                            /*
+                            var destBitmap: Bitmap? = null
+                            val executor = Executors.newSingleThreadExecutor()
+                            executor.execute {
+                                destBitmap = filterBitmap(imageProxy.toBitmap(), filterType)
+                            }
 
-                            uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
-                                ?: throw IOException("No media store")
+                            if (executor.awaitTermination(2, TimeUnit.SECONDS))
+                            {
 
-                            contentResolver.openOutputStream(uri)?.use {
-                                Log.d(TAG, "Start compressing")
-                                destBitmap.compress(Bitmap.CompressFormat.JPEG, 40, it)
-                            } ?: throw IOException("Failed to open ouput stream")
+                            }
+                            else
+                            {
 
-                            showPhotoSaveAt(uri)
-                        } catch (ex: Exception) {
+                            }
+
+                            executor.shutdown()
+*/
+                            if (destBitmap != null)
+                            {
+                                uri = contentResolver.insert(
+                                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                                    contentValues
+                                )
+                                    ?: throw IOException("No media store")
+
+                                contentResolver.openOutputStream(uri)?.use {
+                                    Log.d(TAG, "Start compressing")
+                                    destBitmap!!.compress(Bitmap.CompressFormat.JPEG, 40, it)
+                                } ?: throw IOException("Failed to open output stream")
+
+                                showPhotoSavedAt(uri)
+                            }
+                            else
+                            {
+                                Toast.makeText(baseContext, "BAD BAD", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        catch (ex: Exception)
+                        {
                             uri?.let { orphanUri ->
                                 contentResolver.delete(orphanUri, null, null)
                             }
                             Log.d(TAG, "Failed to save image $ex")
                             Toast.makeText(baseContext, "BAD", Toast.LENGTH_SHORT).show()
                         }
+
                         /*
                         val img = Image(imageProxy, requestedFormat)
                         val uri = saveImage(contentResolver, contentValues, img)
                         if (uri != null) {
                             showPhotoSaveAt(uri)
                         }
-
                          */
                         super.onCaptureSuccess(imageProxy)
                     }
 
-                    override fun onError(exc: ImageCaptureException) {
-                        Log.e(TAG, "Photo capture failed: ${exc.message}", exc)
-                    }
+                    override fun onError(ex: ImageCaptureException) { showPhotoError(ex) }
                 })
         }
     }
@@ -926,12 +983,15 @@ class MainActivity : AppCompatActivity() {
         }.start()
     }
 
-    private fun countdown(seconds: Int) {
-        if (seconds > 0) {
+    private fun countdown(seconds: Int)
+    {
+        if (seconds > 0)
+        {
             enableInfoTextView("$seconds")
 
             object : CountDownTimer(delayBeforeActionSeconds.toLong()*1000, 1000) {
-                override fun onTick(reamaining_ms: Long) {
+                override fun onTick(reamaining_ms: Long)
+                {
                     viewBinding.infoText.text = "${reamaining_ms / 1000}"
                 }
 
