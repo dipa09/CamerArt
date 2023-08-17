@@ -7,7 +7,7 @@ import android.provider.MediaStore
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-
+import java.io.File
 
 
 class GalleryActivity : AppCompatActivity() {
@@ -22,10 +22,12 @@ class GalleryActivity : AppCompatActivity() {
 
 
         val imageUris = getImages()
+        val videoUris = getVideos()
+        val mediaUris = sortMedia(imageUris,videoUris)
 
         imageRecyclerView = findViewById(R.id.imageRecyclerView)
         imageRecyclerView.layoutManager = GridLayoutManager(this, 2)
-        imageGalleryAdapter = ImageGalleryAdapter(this, imageUris)
+        imageGalleryAdapter = ImageGalleryAdapter(this, mediaUris)
         imageRecyclerView.adapter = imageGalleryAdapter;
 
     }
@@ -42,9 +44,7 @@ class GalleryActivity : AppCompatActivity() {
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI
         }
         //uso use per non avere problemi con il cursor e chiuderlo in automatico quando finisce
-        val cursor =
-
-            contentResolver.query(
+        val cursor = contentResolver.query(
             collection,
             projection,
             null,
@@ -60,8 +60,45 @@ class GalleryActivity : AppCompatActivity() {
             }
         }
 
-        //ritorna le ultime 5 immagini prese
-        return imageUris.asReversed()
-    }
 
+        return imageUris
+    }
+    private fun getVideos(): List<String> {
+        val projection = arrayOf(MediaStore.Video.Media.DATA)
+        val videoUris = mutableListOf<String>()
+        val collection =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                MediaStore.Video.Media.getContentUri(
+                    MediaStore.VOLUME_EXTERNAL
+                )
+            } else {
+                MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+            }
+        //uso use per non avere problemi con il cursor e chiuderlo in automatico quando finisce
+        val cursor = contentResolver.query(
+            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+            projection,
+            null,
+            null,
+            null
+            )
+        cursor?.use {
+            val columnIndex = it.getColumnIndexOrThrow(MediaStore.Video.Media.DATA)
+
+            while (it.moveToNext()) {
+                val videoPath = it.getString(columnIndex)
+                videoUris.add(videoPath)
+            }
+        }
+
+        return videoUris
+    }
+    private fun sortMedia(imageList : List<String>, videoList : List<String>) : List<String>{
+        val media = mutableListOf<String>()
+        media.addAll(imageList)
+        media.addAll(videoList)
+        media.sortBy { val f = File(it)
+        f.lastModified()}
+        return media.asReversed()
+    }
 }
