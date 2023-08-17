@@ -51,27 +51,31 @@
     <string name="filter_key" translatable="false">flt</string>
     <string name="filter_value_none" translatable="false">none</string>
     <string name="filter_value_nogreen" translatable="false">nogreen</string>
-    <string name="filter_value_grey" translatable="false">grey</string>
+    <string name="filter_value_gray" translatable="false">gray</string>
     <string name="filter_value_sepia" translatable="false">sepia</string>
-    <string name="filter_value_sketch" translatable="false">sketch</string>
     <string name="filter_value_negative" translatable="false">neg</string>
-    <string name="filter_value_blur" translatable="false">blur</string>
-    <string name="filter_value_mblur" translatable="false">mblur</string>
-    <string name="filter_value_sharpen" translatable="false">shrp</string>
     <string name="filter_value_aqua" translatable="false">aqua</string>
     <string name="filter_value_faded" translatable="false">faded</string>
+    <string name="filter_value_sketch" translatable="false">sketch</string>
+    <string name="filter_value_blur" translatable="false">blur</string>
+    <string name="filter_value_sharpen_light" translatable="false">shrpl</string>
+    <string name="filter_value_sharpen_hard" translatable="false">shrph</string>
+    <string name="filter_value_emboss" translatable="false">emboss</string>
+    <string name="filter_value_edge" translatable="false">edge</string>
     <string name="filter">Filters</string>
     <string name="filter_summary">Apply an image filter</string>
     <string name="filter_name_nogreen">No Green</string>
-    <string name="filter_name_grey">Grey</string>
+    <string name="filter_name_gray">Gray</string>
     <string name="filter_name_sepia">Sepia</string>
-    <string name="filter_name_sketch">Sketch</string>
     <string name="filter_name_negative">Negative</string>
-    <string name="filter_name_blur">Blur</string>
-    <string name="filter_name_mblur">Motion Blur</string>
-    <string name="filter_name_sharpen">Sharpen</string>
     <string name="filter_name_aqua">Aqua</string>
     <string name="filter_name_faded">Faded</string>
+    <string name="filter_name_sketch">Sketch</string>
+    <string name="filter_name_blur">Blur</string>
+    <string name="filter_name_edge">Edge</string>
+    <string name="filter_name_sharpen_light">Sharpen</string>
+    <string name="filter_name_sharpen_hard">Sharpen Hard</string>
+    <string name="filter_name_emboss">Emboss</string>
 
     <string name="video_quality_key" translatable="false">videoqual</string>
 

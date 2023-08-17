@@ -2,17 +2,12 @@
   - Detect devices capable of Preview + Vide + Photo use case
   - Set resolution
     https://developer.android.com/training/camerax/configuration#specify-resolution
-
 - Image Capture
   - setResolutionSelector
-
-- Gestures
-  - Animate transitions?
-
-- Setting Fragment
-  - Set output folder for saving photos and videos?
-
-- Setting UI
-  - Overflow menu
-    - Info about gestures
-    - Info about the app
+- Animate transitions?
+- Set output folder for saving photos and videos?
+- Info about gestures
+- Restore png
+- Test webp
+- Increase screen luminosity
+- Sound on photo

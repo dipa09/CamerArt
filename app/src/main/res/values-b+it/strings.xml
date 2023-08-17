@@ -31,15 +31,17 @@
     <string name="filter">Filtri</string>
     <string name="filter_summary">Applica un filtro immagine</string>
     <string name="filter_name_nogreen">Niente Verde</string>
-    <string name="filter_name_grey">Grigio</string>
+    <string name="filter_name_gray">Grigio</string>
     <string name="filter_name_sepia">Seppia</string>
     <string name="filter_name_sketch">Disegno</string>
     <string name="filter_name_negative">Negativo</string>
-    <string name="filter_name_blur">Sfocato</string>
-    <string name="filter_name_mblur">Movimentato</string>
-    <string name="filter_name_sharpen">Sharpen</string>
     <string name="filter_name_aqua">Acqua</string>
     <string name="filter_name_faded">Sbiadito</string>
+    <string name="filter_name_blur">Sfocato</string>
+    <string name="filter_name_edge">Contorno</string>
+    <string name="filter_name_sharpen_light">Affilato</string>
+    <string name="filter_name_sharpen_hard">Aguzzo</string>
+    <string name="filter_name_emboss">Rilievo</string>
 
     <string name="video_duration_summary">Limita la durata video</string>
 

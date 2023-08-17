@@ -79,28 +79,32 @@
     <string-array name="filter_names">
         <item>@string/none</item>
         <item>@string/filter_name_nogreen</item>
-        <item>@string/filter_name_grey</item>
+        <item>@string/filter_name_gray</item>
         <item>@string/filter_name_sepia</item>
         <item>@string/filter_name_sketch</item>
         <item>@string/filter_name_negative</item>
-        <item>@string/filter_name_blur</item>
-        <item>@string/filter_name_mblur</item>
-        <item>@string/filter_name_sharpen</item>
         <item>@string/filter_name_aqua</item>
         <item>@string/filter_name_faded</item>
+        <item>@string/filter_name_blur</item>
+        <item>@string/filter_name_sharpen_light</item>
+        <item>@string/filter_name_sharpen_hard</item>
+        <item>@string/filter_name_edge</item>
+        <item>@string/filter_name_emboss</item>
     </string-array>
     <string-array name="filter_values">
         <item>none</item>
-        <item>@string/filter_value_nogreen</item>
-        <item>@string/filter_value_grey</item>
+        <item>@string/filter_name_nogreen</item>
+        <item>@string/filter_value_gray</item>
         <item>@string/filter_value_sepia</item>
         <item>@string/filter_value_sketch</item>
         <item>@string/filter_value_negative</item>
-        <item>@string/filter_value_blur</item>
-        <item>@string/filter_value_mblur</item>
-        <item>@string/filter_value_sharpen</item>
         <item>@string/filter_value_aqua</item>
         <item>@string/filter_value_faded</item>
+        <item>@string/filter_value_blur</item>
+        <item>@string/filter_value_sharpen_light</item>
+        <item>@string/filter_value_sharpen_hard</item>
+        <item>@string/filter_value_edge</item>
+        <item>@string/filter_value_emboss</item>
     </string-array>
 
 </resources>

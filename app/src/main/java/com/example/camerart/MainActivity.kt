@@ -6,6 +6,7 @@ import android.app.ActivityOptions
 import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
@@ -87,13 +88,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private lateinit var viewBinding: ActivityMainBinding
+    // TODO(davide): Use one executor
     private lateinit var cameraExecutor: ExecutorService
+    private lateinit var executor: ExecutorService
+    //
     private lateinit var barcodeScanner: BarcodeScanner
 
     // Gesture stuff
     private lateinit var  commonDetector: GestureDetectorCompat
     private lateinit var scaleDetector: ScaleGestureDetector
     private var scaling: Boolean = false
+    private var isBeefy: Boolean = false
     //
 
     private var imageCapture: ImageCapture? = null
@@ -168,44 +173,47 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         cameraExecutor.shutdown()
+        executor.shutdown()
     }
 
     override fun onResume() {
         super.onResume()
 
         if (loadPreferences(false)) {
-            Log.d(TAG, "RESTART CAMERA")
+            //Log.d(TAG, "RESTART CAMERA")
             startCamera()
         }
-        Log.d(TAG, "ON RESUME ENDED")
+        //Log.d(TAG, "ON RESUME ENDED")
     }
 
-    private fun firstRunCheck() {
+    private fun initialize() {
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
         if (prefs.getBoolean(ON_FIRST_RUN, true)) {
-            prefs.edit().putBoolean(ON_FIRST_RUN, false).apply()
-            // TODO(davide): Set JPEG quality to default, otherwise it will be 0 the first
-            // time that settings get opened
+            isBeefy = isBeefyDevice()
+            with (prefs.edit()) {
+                putBoolean(ON_FIRST_RUN, false)
+                putBoolean("isBeefy", isBeefy)
+                putInt(resources.getString(R.string.jpeg_quality_key), jpegQuality)
+                apply()
+            }
 
             Thread {
                 if (!deviceHasBeenTested()) {
                     runOnUiThread { infoDialog(this) }
                 }
             }.start()
+        } else {
+            isBeefy = prefs.getBoolean("isBeefy", false)
+            loadPreferences(prefs, true)
         }
-    }
 
-    private fun initialize() {
-        firstRunCheck()
-        //getAvailableMimes()
-        loadPreferences(true)
         startCamera()
     }
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Log.d(TAG, "ON CREATE START")
+        //Log.d(TAG, "ON CREATE START")
 
         //dumpCameraFeatures(packageManager)
         cameraFeatures = initCameraFeatures(packageManager)
@@ -225,11 +233,10 @@ class MainActivity : AppCompatActivity() {
         commonDetector = GestureDetectorCompat(viewBinding.viewFinder.context, commonListener)
         scaleDetector = ScaleGestureDetector(viewBinding.viewFinder.context, scaleListener)
 
-        if (allPermissionsGranted()) {
+        if (allPermissionsGranted())
             initialize()
-        } else {
+        else
             requestPermissions()
-        }
 
         viewBinding.photoButton.setOnClickListener { takePhotoOrVideo() }
         viewBinding.muteButton.setOnClickListener { toggleAudio() }
@@ -253,7 +260,9 @@ class MainActivity : AppCompatActivity() {
         }
 
         cameraExecutor = Executors.newSingleThreadExecutor()
-        Log.d(TAG, "ON CREATE END")
+        executor = Executors.newSingleThreadExecutor()
+
+        //Log.d(TAG, "ON CREATE END")
     }
 
     private fun toggleAudio() {
@@ -282,6 +291,7 @@ class MainActivity : AppCompatActivity() {
             intent.putExtra("exposureState", exposureStateToBundle(camInfo.exposureState))
         }
         intent.putExtra("features", cameraFeaturesToBundle(cameraFeatures))
+        intent.putExtra("isBeefy", isBeefy)
 
         this.startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this).toBundle())
     }
@@ -298,16 +308,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun captureModeFromPreference(name: String, camInfo: CameraInfo?): Int {
+    private fun captureModeFromPreference(name: String): Int {
         var mode = ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
-        if (name == resources.getString(R.string.capture_value_quality)) {
+        if (name == resources.getString(R.string.capture_value_quality))
             mode = ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY
-        } /* else if (name == "zero" && camInfo != null &&
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
-        camInfo.isZslSupported) {
-        mode = ImageCapture.CAPTURE_MODE_ZERO_SHUTTER_LAG
-    }*/
-
         return mode
     }
 
@@ -326,15 +330,17 @@ class MainActivity : AppCompatActivity() {
     private fun filterTypeFromPreference(filterValue: String): Int {
         return when (filterValue) {
             resources.getString(R.string.filter_value_nogreen) -> FILTER_TYPE_NO_GREEN
-            resources.getString(R.string.filter_value_grey) -> FILTER_TYPE_GREY
+            resources.getString(R.string.filter_value_gray) -> FILTER_TYPE_GREY
             resources.getString(R.string.filter_value_sepia) -> FILTER_TYPE_SEPIA
             resources.getString(R.string.filter_value_sketch) -> FILTER_TYPE_SKETCH
             resources.getString(R.string.filter_value_negative) -> FILTER_TYPE_NEGATIVE
-            resources.getString(R.string.filter_value_blur) -> FILTER_TYPE_BLUR
-            resources.getString(R.string.filter_value_mblur) -> FILTER_TYPE_MOTION_BLUR
-            resources.getString(R.string.filter_value_sharpen) -> FILTER_TYPE_SHARPEN
             resources.getString(R.string.filter_value_aqua) -> FILTER_TYPE_AQUA
             resources.getString(R.string.filter_value_faded) -> FILTER_TYPE_FADED
+            resources.getString(R.string.filter_value_blur) -> FILTER_TYPE_BLUR
+            resources.getString(R.string.filter_value_edge) -> FILTER_TYPE_EDGE
+            resources.getString(R.string.filter_value_emboss) -> FILTER_TYPE_EMBOSS
+            resources.getString(R.string.filter_value_sharpen_light) -> FILTER_TYPE_SHARPEN_LIGHT
+            resources.getString(R.string.filter_value_sharpen_hard) -> FILTER_TYPE_SHARPEN_HARD
             else -> FILTER_TYPE_NONE
         }
     }
@@ -342,14 +348,12 @@ class MainActivity : AppCompatActivity() {
     // NOTE(davide): For some reason, sometimes you need to delete app's data if you edit
     // a previous preference from root_preferences.xml or arrays.xml, otherwise you get
     // a random exception.
-    private fun loadPreferences(onCreate: Boolean): Boolean {
+    private fun loadPreferences(sharedPreference: SharedPreferences, onCreate: Boolean): Boolean {
         var changeCount = 0
-
         var gotVideo = false
         var gotQR = false
-
-        val sharedPreference = PreferenceManager.getDefaultSharedPreferences(this)
         var newCaptureMode: Int = captureMode
+
         for (pref in sharedPreference.all.iterator()) {
             //Log.i(TAG, "preference ${pref.key}, ${pref.value}")
 
@@ -363,7 +367,7 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 resources.getString(R.string.capture_key) -> {
-                    newCaptureMode = captureModeFromPreference(pref.value as String, currCamInfo)
+                    newCaptureMode = captureModeFromPreference(pref.value as String)
                     if (newCaptureMode != captureMode) {
                         captureMode = newCaptureMode
                         ++changeCount
@@ -509,6 +513,11 @@ class MainActivity : AppCompatActivity() {
         return changeCount > 0
     }
 
+    private fun loadPreferences(onCreate: Boolean): Boolean {
+        val sharedPreference = PreferenceManager.getDefaultSharedPreferences(this)
+        return loadPreferences(sharedPreference, onCreate)
+    }
+
     private fun applySettingsToCurrentCamera(camInfo: CameraInfo, camControl: CameraControl) {
         if (camInfo.exposureState.exposureCompensationIndex != exposureCompensationIndex) {
             camControl.setExposureCompensationIndex(exposureCompensationIndex)
@@ -518,16 +527,14 @@ class MainActivity : AppCompatActivity() {
         currCamControl = camControl
     }
 
-    private fun showPhotoSavedAt(uri: Uri)
-    {
+    private fun showPhotoSavedAt(uri: Uri) {
         val msg = resources.getString(R.string.photo_saved_success) + " $uri"
         Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
 
         Log.d(TAG, msg)
     }
 
-    private fun showPhotoError(ex: Exception)
-    {
+    private fun showPhotoError(ex: Exception) {
         val msg = resources.getString(R.string.photo_error)
         Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
 
@@ -535,17 +542,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     // TODO(davide): Add more metadata. Location, producer, ...
-    private fun takePhoto()
-    {
+    private fun takePhoto() {
         val imageCapture = imageCapture ?: return
+
+        val tid = android.os.Process.getThreadPriority(android.os.Process.myTid())
+        Log.d("XX", "Main thread id is $tid")
 
         countdown(delayBeforeActionSeconds)
 
         val contentValues = makeContentValues(
             SimpleDateFormat(FILENAME_FORMAT, Locale.US).format(System.currentTimeMillis()),
             requestedFormat)
-        if (filterType == FILTER_TYPE_NONE && requestedFormat == MIME_TYPE_JPEG)
-        {
+        if (filterType == FILTER_TYPE_NONE && requestedFormat == MIME_TYPE_JPEG) {
             val outputOptions = ImageCapture.OutputFileOptions
                 .Builder(contentResolver,
                     MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
@@ -554,10 +562,8 @@ class MainActivity : AppCompatActivity() {
             imageCapture.takePicture(
                 outputOptions,
                 ContextCompat.getMainExecutor(this),
-                object : ImageCapture.OnImageSavedCallback
-                {
-                    override fun onImageSaved(output: ImageCapture.OutputFileResults)
-                    {
+                object : ImageCapture.OnImageSavedCallback {
+                    override fun onImageSaved(output: ImageCapture.OutputFileResults) {
                         // NOTE(davide): How can it saves the image without having the URI?
                         val uri = output.savedUri
                         if (uri != null)
@@ -567,77 +573,48 @@ class MainActivity : AppCompatActivity() {
                     override fun onError(ex: ImageCaptureException) { showPhotoError(ex) }
                 }
             )
-        }
-        else
-        {
+        } else {
             imageCapture.takePicture(
                 ContextCompat.getMainExecutor(this),
                 object : ImageCapture.OnImageCapturedCallback() {
-                    override fun onCaptureSuccess(imageProxy: ImageProxy)
-                    {
+                    override fun onCaptureSuccess(imageProxy: ImageProxy) {
                         // NOTE(davide): Apparently there is no way to tell CameraX to NOT compress
                         // the image in JPEG.
 
-
                         var uri: Uri? = null
-                        try
-                        {
-                            val destBitmap = filterBitmap(imageProxy.toBitmap(), filterType)
-                            /*
-                            val filterThread = FilterThread()
-                            filterThread.sourceBitmap = imageProxy.toBitmap()
-                            filterThread.filterType = filterType
-                            filterThread.start()
-                            filterThread.join(2000)
-                            val destBitmap = filterThread.destBitmap
-                             */
-                            /*
-                            var destBitmap: Bitmap? = null
-                            val executor = Executors.newSingleThreadExecutor()
-                            executor.execute {
-                                destBitmap = filterBitmap(imageProxy.toBitmap(), filterType)
-                            }
+                        try {
+                            val sourceBitmap = imageProxy.toBitmap()
+                            val destBitmap = filterBitmap(sourceBitmap, filterType)
 
-                            if (executor.awaitTermination(2, TimeUnit.SECONDS))
-                            {
-
-                            }
-                            else
-                            {
-
-                            }
-
-                            executor.shutdown()
-*/
-                            if (destBitmap != null)
-                            {
-                                uri = contentResolver.insert(
+                            uri = contentResolver.insert(
                                     MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                                    contentValues
-                                )
-                                    ?: throw IOException("No media store")
+                                    contentValues) ?: throw IOException("No media store")
 
-                                contentResolver.openOutputStream(uri)?.use {
+                            contentResolver.openOutputStream(uri)?.use {
                                     Log.d(TAG, "Start compressing")
-                                    destBitmap!!.compress(Bitmap.CompressFormat.JPEG, 40, it)
+                                destBitmap.compress(Bitmap.CompressFormat.JPEG, jpegQuality, it)
                                 } ?: throw IOException("Failed to open output stream")
 
-                                showPhotoSavedAt(uri)
-                            }
-                            else
-                            {
-                                Toast.makeText(baseContext, "BAD BAD", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                        catch (ex: Exception)
-                        {
+                                //Toast.makeText(baseContext, "BAD BAD", Toast.LENGTH_SHORT).show()
+
+                                //val destBitmap = filterBitmap(imageProxy.toBitmap(), filterType)
+/*
+                                //var destBitmap: Bitmap? = null
+                                executor.execute {
+                                    //Toast.makeText(baseContext, "Applying filter", Toast.LENGTH_SHORT).show()
+                                    val destBitmap = filterBitmap(sourceBitmap, filterType)
+                                    //Toast.makeText(baseContext, "Filter applied", Toast.LENGTH_SHORT).show()
+                                }
+                            */
+
+                            showPhotoSavedAt(uri)
+                        } catch (ex: Exception) {
                             uri?.let { orphanUri ->
                                 contentResolver.delete(orphanUri, null, null)
                             }
                             Log.d(TAG, "Failed to save image $ex")
                             Toast.makeText(baseContext, "BAD", Toast.LENGTH_SHORT).show()
                         }
-
                         /*
                         val img = Image(imageProxy, requestedFormat)
                         val uri = saveImage(contentResolver, contentValues, img)
