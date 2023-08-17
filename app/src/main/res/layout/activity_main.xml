@@ -48,7 +48,8 @@
             android:id="@+id/gallery_button"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:background="@drawable/baseline_photo_library_24" />
+            android:background="@drawable/baseline_photo_library_24"
+            android:translationX="-20dp" />
     </LinearLayout>
 
     <LinearLayout
@@ -79,7 +80,7 @@
             android:id="@+id/play_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@android:drawable/ic_media_pause"
+            android:background="@drawable/baseline_mic_none_24"
             android:visibility="invisible" />
 
         <Space
