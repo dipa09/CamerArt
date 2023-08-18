@@ -5,7 +5,6 @@
 - Image Capture
   - setResolutionSelector
 - Animate transitions?
-- Set output folder for saving photos and videos?
 - Info about gestures
 
 - Restore png

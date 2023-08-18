@@ -10,6 +10,7 @@ import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SeekBarPreference
+import androidx.preference.SwitchPreferenceCompat
 
 class SettingActivity : AppCompatActivity() {
     class SettingsFragment : PreferenceFragmentCompat() {
@@ -139,8 +140,7 @@ class SettingActivity : AppCompatActivity() {
             }
         }
         private fun setupFiltersPreference(args: Bundle) {
-            val pref: DropDownPreference? =
-                findPreference(resources.getString(R.string.filter_key))
+            val pref: DropDownPreference? = findPreference(resources.getString(R.string.filter_key))
             if (pref != null) {
                 val isBeefy = args.getBoolean("isBeefy")
                 if (!isBeefy) {

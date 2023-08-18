@@ -187,15 +187,22 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initialize() {
+        soundManager = SoundManager()
+
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
         if (prefs.getBoolean(ON_FIRST_RUN, true)) {
             isBeefy = isBeefyDevice()
+            val noisy = deviceIsNoisy(applicationContext)
             with (prefs.edit()) {
                 putBoolean(ON_FIRST_RUN, false)
                 putBoolean("isBeefy", isBeefy)
-                putInt(resources.getString(R.string.jpeg_quality_key), jpegQuality)
+                putInt(resources.getString(R.string.jpeg_quality_key), JPEG_QUALITY_LATENCY)
+                putBoolean(resources.getString(R.string.action_sound_key), noisy)
                 apply()
             }
+
+            if (noisy)
+                soundManager.enable()
 
             Thread {
                 if (!deviceHasBeenTested()) {
@@ -206,8 +213,6 @@ class MainActivity : AppCompatActivity() {
             isBeefy = prefs.getBoolean("isBeefy", false)
             loadPreferences(prefs, true)
         }
-
-        soundManager = SoundManager()
 
         startCamera()
     }
@@ -489,6 +494,13 @@ class MainActivity : AppCompatActivity() {
                 resources.getString(R.string.qrcode_key) -> {
                     gotQR = pref.value as Boolean
                     //changeCount = toggleMode(pref.value as Boolean, MODE_QRCODE_SCANNER, changeCount)
+                }
+
+                resources.getString(R.string.action_sound_key) -> {
+                    if (pref.value as Boolean)
+                        soundManager.enable()
+                    else
+                        soundManager.disable()
                 }
             }
         }
