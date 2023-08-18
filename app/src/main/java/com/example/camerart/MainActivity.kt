@@ -56,6 +56,7 @@ class MainActivity : AppCompatActivity() {
             mutableListOf(
                 Manifest.permission.CAMERA,
                 Manifest.permission.RECORD_AUDIO,
+
             ).apply {
                 if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
                     add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
@@ -303,6 +304,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun launchGallery() {
         val intent = Intent(this, GalleryActivity::class.java)
+
         this.startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this).toBundle())
     }
     private fun flashModeFromPreference(prefValue: String): Int {
@@ -1061,7 +1063,7 @@ class MainActivity : AppCompatActivity() {
                     if (diffX < 0) {
                         Log.d("Gesture", "Left swipe")
 
-                        // TODO(davide): Start gallery activity
+                        launchGallery()
                     } else {
                         Log.d("Gesture", "Right swipe")
 

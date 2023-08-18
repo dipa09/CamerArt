@@ -213,7 +213,3 @@ fun stringToIntOr0(s: String): Int {
         0
     }
 }
-
-data class VideoType(val uri : String , val thumbnail : Bitmap?){
-    fun getVideoThumbnail() : Bitmap? {return thumbnail}
-}

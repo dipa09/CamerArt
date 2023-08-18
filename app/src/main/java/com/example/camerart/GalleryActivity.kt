@@ -1,23 +1,18 @@
 package com.example.camerart
 
-import android.content.Context
-import android.graphics.Bitmap
-import android.media.MediaMetadataRetriever
+import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-
+import java.io.File
 
 
 class GalleryActivity : AppCompatActivity() {
 
     private lateinit var imageRecyclerView: RecyclerView
     private lateinit var imageGalleryAdapter: ImageGalleryAdapter
-    private lateinit var videoRecyclerView: RecyclerView
-    private lateinit var videoGalleryAdapter: VideoGalleryAdapter
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -25,41 +20,37 @@ class GalleryActivity : AppCompatActivity() {
         setContentView(R.layout.activity_gallery)
 
 
-
-
         val imageUris = getImages()
         val videoUris = getVideos()
-        val videos = mutableListOf<VideoType>()
-
-        for( v in videoUris){
-            val uri = v
-            val thumbnail = createVideoThumb(this, v)
-            val video = VideoType(v,thumbnail)
-            videos.add(video)
-        }
-
+        val mediaUris = sortMedia(imageUris,videoUris)
 
         imageRecyclerView = findViewById(R.id.imageRecyclerView)
-        imageRecyclerView.layoutManager = GridLayoutManager(this, 3)
-        imageGalleryAdapter = ImageGalleryAdapter(imageUris)
+        imageRecyclerView.layoutManager = GridLayoutManager(this, 2)
+        imageGalleryAdapter = ImageGalleryAdapter(this, mediaUris)
         imageRecyclerView.adapter = imageGalleryAdapter;
 
-        videoRecyclerView = findViewById(R.id.videoRecyclerView)
-        videoRecyclerView.layoutManager = GridLayoutManager(this, 3)
-        videoGalleryAdapter = VideoGalleryAdapter(videos)
-        videoRecyclerView.adapter = videoGalleryAdapter;
     }
 
     private fun getImages(): List<String> {
         val projection = arrayOf(MediaStore.Images.Media.DATA)
         val imageUris = mutableListOf<String>()
-        contentResolver.query(
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+        val collection =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            MediaStore.Images.Media.getContentUri(
+                MediaStore.VOLUME_EXTERNAL
+            )
+        } else {
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+        }
+        //uso use per non avere problemi con il cursor e chiuderlo in automatico quando finisce
+        val cursor = contentResolver.query(
+            collection,
             projection,
             null,
             null,
             null
-        )?.use {
+            )
+        cursor?.use {
             val columnIndex = it.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
 
             while (it.moveToNext()) {
@@ -68,18 +59,29 @@ class GalleryActivity : AppCompatActivity() {
             }
         }
 
+
         return imageUris
     }
     private fun getVideos(): List<String> {
         val projection = arrayOf(MediaStore.Video.Media.DATA)
         val videoUris = mutableListOf<String>()
-        contentResolver.query(
+        val collection =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                MediaStore.Video.Media.getContentUri(
+                    MediaStore.VOLUME_EXTERNAL
+                )
+            } else {
+                MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+            }
+        //uso use per non avere problemi con il cursor e chiuderlo in automatico quando finisce
+        val cursor = contentResolver.query(
             MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
             projection,
             null,
             null,
             null
-        )?.use {
+            )
+        cursor?.use {
             val columnIndex = it.getColumnIndexOrThrow(MediaStore.Video.Media.DATA)
 
             while (it.moveToNext()) {
@@ -90,18 +92,12 @@ class GalleryActivity : AppCompatActivity() {
 
         return videoUris
     }
-
-    private fun createVideoThumb(context: Context,path : String): Bitmap? {
-        try {
-            val mediaMetadataRetriever = MediaMetadataRetriever()
-            mediaMetadataRetriever.setDataSource(path)
-            return mediaMetadataRetriever.frameAtTime
-        } catch (ex: Exception) {
-            Toast
-                .makeText(context, "Error retrieving bitmap", Toast.LENGTH_SHORT)
-                .show()
-        }
-        return null
-
+    private fun sortMedia(imageList : List<String>, videoList : List<String>) : List<String>{
+        val media = mutableListOf<String>()
+        media.addAll(imageList)
+        media.addAll(videoList)
+        media.sortBy { val f = File(it)
+        f.lastModified()}
+        return media.asReversed()
     }
 }
