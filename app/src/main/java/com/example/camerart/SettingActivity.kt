@@ -149,7 +149,7 @@ class SettingActivity : AppCompatActivity() {
                     assert(pref.entryValues.size > 5)
 
                     pref.entries = pref.entries.dropLast(EXPENSIVE_FILTER_COUNT).toTypedArray()
-                    pref.entryValues = pref.entries.dropLast(EXPENSIVE_FILTER_COUNT).toTypedArray()
+                    pref.entryValues = pref.entryValues.dropLast(EXPENSIVE_FILTER_COUNT).toTypedArray()
                 }
             }
         }

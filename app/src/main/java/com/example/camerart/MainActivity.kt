@@ -3,12 +3,10 @@ package com.example.camerart
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.ActivityOptions
-import android.content.ContentResolver
-import android.content.ContentValues
-import android.content.Intent
-import android.content.SharedPreferences
+import android.content.*
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.media.MediaActionSound
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -93,6 +91,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var executor: ExecutorService
     //
     private lateinit var barcodeScanner: BarcodeScanner
+
+    private lateinit var soundManager: SoundManager
 
     // Gesture stuff
     private lateinit var  commonDetector: GestureDetectorCompat
@@ -206,6 +206,8 @@ class MainActivity : AppCompatActivity() {
             isBeefy = prefs.getBoolean("isBeefy", false)
             loadPreferences(prefs, true)
         }
+
+        soundManager = SoundManager()
 
         startCamera()
     }
@@ -541,6 +543,11 @@ class MainActivity : AppCompatActivity() {
         Log.e(TAG, "Photo capture failed: ${ex.message}")
     }
 
+    private fun playShutterSound() {
+        val sound = MediaActionSound()
+        sound.play(MediaActionSound.SHUTTER_CLICK)
+    }
+
     // TODO(davide): Add more metadata. Location, producer, ...
     private fun takePhoto() {
         val imageCapture = imageCapture ?: return
@@ -548,6 +555,7 @@ class MainActivity : AppCompatActivity() {
         val tid = android.os.Process.getThreadPriority(android.os.Process.myTid())
         Log.d("XX", "Main thread id is $tid")
 
+        soundManager.prepare(MediaActionSound.SHUTTER_CLICK)
         countdown(delayBeforeActionSeconds)
 
         val contentValues = makeContentValues(
@@ -559,6 +567,8 @@ class MainActivity : AppCompatActivity() {
                     MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                     contentValues)
                 .build()
+
+            soundManager.play()
             imageCapture.takePicture(
                 outputOptions,
                 ContextCompat.getMainExecutor(this),
@@ -574,6 +584,7 @@ class MainActivity : AppCompatActivity() {
                 }
             )
         } else {
+            soundManager.play()
             imageCapture.takePicture(
                 ContextCompat.getMainExecutor(this),
                 object : ImageCapture.OnImageCapturedCallback() {
@@ -595,18 +606,6 @@ class MainActivity : AppCompatActivity() {
                                 destBitmap.compress(Bitmap.CompressFormat.JPEG, jpegQuality, it)
                                 } ?: throw IOException("Failed to open output stream")
 
-                                //Toast.makeText(baseContext, "BAD BAD", Toast.LENGTH_SHORT).show()
-
-                                //val destBitmap = filterBitmap(imageProxy.toBitmap(), filterType)
-/*
-                                //var destBitmap: Bitmap? = null
-                                executor.execute {
-                                    //Toast.makeText(baseContext, "Applying filter", Toast.LENGTH_SHORT).show()
-                                    val destBitmap = filterBitmap(sourceBitmap, filterType)
-                                    //Toast.makeText(baseContext, "Filter applied", Toast.LENGTH_SHORT).show()
-                                }
-                            */
-
                             showPhotoSavedAt(uri)
                         } catch (ex: Exception) {
                             uri?.let { orphanUri ->
@@ -615,13 +614,7 @@ class MainActivity : AppCompatActivity() {
                             Log.d(TAG, "Failed to save image $ex")
                             Toast.makeText(baseContext, "BAD", Toast.LENGTH_SHORT).show()
                         }
-                        /*
-                        val img = Image(imageProxy, requestedFormat)
-                        val uri = saveImage(contentResolver, contentValues, img)
-                        if (uri != null) {
-                            showPhotoSaveAt(uri)
-                        }
-                         */
+
                         super.onCaptureSuccess(imageProxy)
                     }
 
@@ -706,6 +699,8 @@ class MainActivity : AppCompatActivity() {
                         recDurationNanos = videoDuration.toLong()*1_000_000_000
                     if (showVideoStats)
                         viewBinding.statsText.visibility = View.VISIBLE
+
+                    soundManager.prepare(MediaActionSound.START_VIDEO_RECORDING)
                     countdown(delayBeforeActionSeconds)
                 }
             }
@@ -718,10 +713,12 @@ class MainActivity : AppCompatActivity() {
     private fun handleRecordEvent(event: VideoRecordEvent, recDurationNanos: Long) {
         when (event) {
             is VideoRecordEvent.Start -> {
+                soundManager.play()
                 viewBinding.photoButton.isEnabled = true
             }
 
             is VideoRecordEvent.Finalize -> {
+                soundManager.playOnce(MediaActionSound.STOP_VIDEO_RECORDING)
                 if (!event.hasError()) {
                     val msg = R.string.video_saved_success.toString() + "${event.outputResults.outputUri}"
                     Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
@@ -1005,6 +1002,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun finishFocus() {
+        soundManager.play()
         viewBinding.focusRing.visibility = View.INVISIBLE
         focusing = false
     }
@@ -1018,6 +1016,8 @@ class MainActivity : AppCompatActivity() {
                     finishFocus()
                 }, ContextCompat.getMainExecutor(baseContext))
             } else {
+                soundManager.prepare(MediaActionSound.FOCUS_COMPLETE)
+
                 val pointFactory = viewBinding.viewFinder.meteringPointFactory
                 val p1 = pointFactory.createPoint(posX, posY)
                 val action = FocusMeteringAction.Builder(p1, meteringMode)

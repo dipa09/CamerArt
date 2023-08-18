@@ -7,7 +7,9 @@
 - Animate transitions?
 - Set output folder for saving photos and videos?
 - Info about gestures
+
 - Restore png
 - Test webp
 - Increase screen luminosity
-- Sound on photo
+- Face detection
+- Multi-thread the filter
