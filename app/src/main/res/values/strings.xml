@@ -114,6 +114,10 @@
     <string name="action_sound">Sound Effects</string>
     <string name="action_sound_summary">Play sounds when taking photo/videos</string>
 
+    <string name="brightness_key" translatable="false">brightness</string>
+    <string name="brightness">Bright Screen</string>
+    <string name="brightness_summary">Keep the screen at maximum brightness</string>
+
     <string name="photo_saved_success">Photo saved successfully in</string>
     <string name="video_saved_success">Video saved successfully in</string>
     <string name="photo_error">Error while taking the photo</string>

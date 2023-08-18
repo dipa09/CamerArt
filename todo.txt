@@ -9,6 +9,5 @@
 
 - Restore png
 - Test webp
-- Increase screen luminosity
 - Face detection
 - Multi-thread the filter

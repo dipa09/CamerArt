@@ -99,8 +99,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var  commonDetector: GestureDetectorCompat
     private lateinit var scaleDetector: ScaleGestureDetector
     private var scaling: Boolean = false
-    private var isBeefy: Boolean = false
     //
+
+    private var isBeefy: Boolean = false
+    private var initialBrightness: Float = 0.0f
 
     private var imageCapture: ImageCapture? = null
     private var videoCapture: VideoCapture<Recorder>? = null
@@ -189,6 +191,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun initialize() {
         soundManager = SoundManager()
+
+        initialBrightness = window.attributes.screenBrightness
 
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
         if (prefs.getBoolean(ON_FIRST_RUN, true)) {
@@ -520,6 +524,13 @@ class MainActivity : AppCompatActivity() {
                     else
                         soundManager.disable()
                 }
+
+                resources.getString(R.string.brightness_key) -> {
+                    val gotBrightness = (pref.value as Boolean)
+                    val layout = window.attributes
+                    layout.screenBrightness = if (gotBrightness) 1f else initialBrightness
+                    window.attributes = layout
+                }
             }
         }
 
@@ -582,9 +593,6 @@ class MainActivity : AppCompatActivity() {
     private fun takePhoto() {
         val imageCapture = imageCapture ?: return
 
-        val tid = android.os.Process.getThreadPriority(android.os.Process.myTid())
-        Log.d("XX", "Main thread id is $tid")
-
         soundManager.prepare(MediaActionSound.SHUTTER_CLICK)
         countdown(delayBeforeActionSeconds)
 
@@ -631,9 +639,9 @@ class MainActivity : AppCompatActivity() {
                                     contentValues) ?: throw IOException("No media store")
 
                             contentResolver.openOutputStream(uri)?.use {
-                                    Log.d(TAG, "Start compressing")
+                                Log.d(TAG, "Start compressing")
                                 destBitmap.compress(Bitmap.CompressFormat.JPEG, jpegQuality, it)
-                                } ?: throw IOException("Failed to open output stream")
+                            } ?: throw IOException("Failed to open output stream")
 
                             showPhotoSavedAt(uri)
                         } catch (ex: Exception) {
