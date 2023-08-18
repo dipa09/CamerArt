@@ -34,6 +34,7 @@ class ImageGalleryAdapter(context: Context, private val imageUris: List<String>)
     }
 }
 
+/*
 class VideoGalleryAdapter(private val videos: List<VideoType>) :
     RecyclerView.Adapter<VideoGalleryAdapter.ImageViewHolder>() {
 
@@ -60,3 +61,4 @@ class VideoGalleryAdapter(private val videos: List<VideoType>) :
         return videos.size
     }
 }
+ */
