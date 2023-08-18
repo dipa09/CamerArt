@@ -6,6 +6,7 @@ import android.app.ActivityOptions
 import android.content.*
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.media.MediaActionSound
 import android.net.Uri
 import android.os.Build
@@ -603,7 +604,6 @@ class MainActivity : AppCompatActivity() {
                 ContextCompat.getMainExecutor(this),
                 object : ImageCapture.OnImageSavedCallback {
                     override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                        // NOTE(davide): How can it saves the image without having the URI?
                         val uri = output.savedUri
                         if (uri != null)
                             showPhotoSavedAt(uri)
@@ -990,15 +990,12 @@ class MainActivity : AppCompatActivity() {
         }.start()
     }
 
-    private fun countdown(seconds: Int)
-    {
-        if (seconds > 0)
-        {
+    private fun countdown(seconds: Int) {
+        if (seconds > 0) {
             enableInfoTextView("$seconds")
 
             object : CountDownTimer(delayBeforeActionSeconds.toLong()*1000, 1000) {
-                override fun onTick(reamaining_ms: Long)
-                {
+                override fun onTick(reamaining_ms: Long) {
                     viewBinding.infoText.text = "${reamaining_ms / 1000}"
                 }
 
