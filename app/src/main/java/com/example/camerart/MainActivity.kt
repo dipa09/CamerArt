@@ -8,6 +8,7 @@ import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -234,9 +235,24 @@ class MainActivity : AppCompatActivity() {
         viewBinding.settingsButton.setOnClickListener { launchSetting() }
         viewBinding.playButton.setOnClickListener { controlVideoRecording() }
         viewBinding.galleryButton.setOnClickListener { launchGallery() }
-        //CHIAMA ALTRA FUNZIONE
-        viewBinding.btnFoto.setOnClickListener{ currMode= MODE_CAPTURE }
-        viewBinding.btnVideo.setOnClickListener { currMode = MODE_VIDEO }
+
+        viewBinding.btnFoto.setOnClickListener{
+            currMode= MODE_CAPTURE
+            viewBinding.btnVideo.setTextColor(Color.parseColor("#FFFFFF"))
+            viewBinding.btnFoto.setTextColor(Color.parseColor("#58A0C4"))
+            viewBinding.photoButton.setBackgroundResource(R.drawable.ic_shutter)
+            viewBinding.muteButton.visibility = View.INVISIBLE
+            viewBinding.playButton.visibility = View.INVISIBLE
+            startCamera()
+        }
+        viewBinding.btnVideo.setOnClickListener {
+            currMode = MODE_VIDEO
+            viewBinding.btnFoto.setTextColor(Color.parseColor("#FFFFFF"))
+            viewBinding.btnVideo.setTextColor(Color.parseColor("#58A0C4"))
+            viewBinding.photoButton.setBackgroundResource((R.drawable.baseline_play_circle_24))
+            viewBinding.muteButton.visibility = View.VISIBLE
+            startCamera()
+        }
         if (cameraFeatures.hasFront) {
             viewBinding.cameraButton.setOnClickListener { toggleCamera() }
         } else {
@@ -259,18 +275,14 @@ class MainActivity : AppCompatActivity() {
 
     private fun toggleAudio() {
         audioEnabled = !audioEnabled
-        //val alpha =
         if (audioEnabled) viewBinding.muteButton.setBackgroundResource(R.drawable.baseline_mic_none_24)
         else viewBinding.muteButton.setBackgroundResource(R.drawable.baseline_mic_off_24)
-        //viewBinding.muteButton.background.alpha = alpha
     }
 
     private fun toggleCamera() {
         lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK) {
-            viewBinding.cameraButton.background.alpha = 0xff/2
             CameraSelector.LENS_FACING_FRONT
         } else {
-            viewBinding.cameraButton.background.alpha = 0xff
             CameraSelector.LENS_FACING_BACK
         }
         startCamera()
@@ -659,11 +671,10 @@ class MainActivity : AppCompatActivity() {
     private fun captureVideo() {
         val videoCapture = this.videoCapture ?: return
 
+        viewBinding.playButton.visibility = View.VISIBLE
         viewBinding.photoButton.isEnabled = false
         if (stopRecording())
             return
-
-        //viewBinding.muteButton.visibility = View.INVISIBLE
 
         var recDurationNanos = Long.MAX_VALUE
 
@@ -790,9 +801,6 @@ class MainActivity : AppCompatActivity() {
                     videoCapture = VideoCapture.withOutput(recorder)
                     cameraProvider.bindToLifecycle(this, selector, preview, videoCapture)
                 } else {
-                    viewBinding.photoButton.setBackgroundResource(R.drawable.ic_shutter)
-                    viewBinding.muteButton.visibility = View.INVISIBLE
-                    viewBinding.playButton.visibility = View.INVISIBLE
                     assert(currMode == MODE_CAPTURE)
                     imageCapture = buildImageCapture()
                     if (showLumus) {
