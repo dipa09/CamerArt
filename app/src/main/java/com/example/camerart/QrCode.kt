@@ -19,7 +19,7 @@ import java.util.*
 class QrCode(barcode: Barcode) {
     var boundingRect: Rect = barcode.boundingBox!!
     var content: String = ""
-    var touchCallback = { v: View, e: MotionEvent -> false}
+    var touchCallback = { _: View, _: MotionEvent -> false}
 
     init {
         when (barcode.valueType) {
@@ -109,7 +109,7 @@ class QrCode(barcode: Barcode) {
                 val phone = barcode.phone!!
 
                 content = "${phoneTypeName(phone.type)}: ${phone.number}"
-                touchCallback = { v: View, e: MotionEvent ->
+                touchCallback = { _: View, _: MotionEvent ->
 
                     true
                 }

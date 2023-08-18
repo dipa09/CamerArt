@@ -144,6 +144,12 @@
             app:summary="@string/qrcode_summary"
             app:defaultValue="false" />
 
+        <SwitchPreferenceCompat
+            app:key="@string/action_sound_key"
+            app:title="@string/action_sound"
+            app:summary="@string/action_sound_summary"
+            app:defaultValue="false" />
+
     </PreferenceCategory>
 
 </PreferenceScreen>

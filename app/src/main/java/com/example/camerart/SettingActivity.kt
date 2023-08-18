@@ -4,11 +4,13 @@ import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.webkit.MimeTypeMap
+import androidx.preference.DropDownPreference
 import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SeekBarPreference
+import androidx.preference.SwitchPreferenceCompat
 
 class SettingActivity : AppCompatActivity() {
     class SettingsFragment : PreferenceFragmentCompat() {
@@ -21,85 +23,109 @@ class SettingActivity : AppCompatActivity() {
                 pref.isEnabled = state
             }
         }
+
+        private fun getCameraFeatures(args: Bundle): CameraFeatures {
+            val b = args.getBundle("features")
+            return if (b != null)
+                cameraFeaturesFromBundle(b)
+            else
+                CameraFeatures()
+        }
+
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             setPreferencesFromResource(R.xml.root_preferences, rootKey)
 
-            val featuresBundle = arguments?.getBundle("features")
-            val features = if (featuresBundle != null)
-                cameraFeaturesFromBundle(featuresBundle)
-            else
-                CameraFeatures(false, false, false)
+            val args = arguments
+            if (args != null) {
+                val features = getCameraFeatures(args)
+                enablePreference(resources.getString(R.string.flash_key), features.hasFlash)
+                enablePreference(resources.getString(R.string.multi_camera_key), features.hasMulti)
 
-            enablePreference(resources.getString(R.string.flash_key), features.hasFlash)
-            enablePreference(resources.getString(R.string.multi_camera_key), features.hasMulti)
+                setupCaptureModeAndJPEGQualityPreference()
+                setupVideoQualityPreference(args)
+                setupImageFormatPreference()
+                setupExposurePreference(args)
+                setupVideoDurationPreference()
+                setupFiltersPreference(args)
+            }
+        }
 
-            // NOTE(davide): Keep the UI consistent since these two are correlated
+        // NOTE(davide): Keep the UI consistent since these two are correlated
+        private fun setupCaptureModeAndJPEGQualityPreference() {
             val prefCapture: ListPreference? = findPreference(resources.getString(R.string.capture_key))
             val prefJpegQuality: SeekBarPreference? = findPreference(resources.getString(R.string.jpeg_quality_key))
             if (prefCapture != null && prefJpegQuality != null) {
                 prefCapture.setOnPreferenceChangeListener { _, newValue ->
                     val capMode = newValue as String
-                    prefJpegQuality.value = if (capMode == resources.getString(R.string.capture_value_quality))
-                        MainActivity.JPEG_QUALITY_MAX
-                    else
-                        MainActivity.JPEG_QUALITY_LATENCY
+                    prefJpegQuality.value =
+                        if (capMode == resources.getString(R.string.capture_value_quality))
+                            MainActivity.JPEG_QUALITY_MAX
+                        else
+                            MainActivity.JPEG_QUALITY_LATENCY
 
                     true
                 }
             }
+        }
 
-            // NOTE(davide): Display only available qualities
-            val prefVideoQuality: ListPreference? = findPreference(resources.getString(R.string.video_quality_key))
-            if (prefVideoQuality != null) {
-                val qualities = arguments?.getStringArray("supportedQualities")
+        // NOTE(davide): Display only available qualities
+        private fun setupVideoQualityPreference(args: Bundle) {
+            val pref: ListPreference? = findPreference(resources.getString(R.string.video_quality_key))
+            if (pref != null) {
+                val qualities = args.getStringArray("supportedQualities")
                 if (qualities != null) {
-                    prefVideoQuality.entryValues = qualities
-                    prefVideoQuality.entries = qualities
+                    pref.entryValues = qualities
+                    pref.entries = qualities
 
                     supportedQualities = qualities
                     supportedResolutions = initVideoResolutions(qualities)
                 }
 
-                prefVideoQuality.summaryProvider = Preference.SummaryProvider<ListPreference> { _ ->
-                    lookupQualityResolutionSummary(prefVideoQuality.value)
-                }
-            }
-
-            val prefImageFormat: ListPreference? =
-                findPreference(resources.getString(R.string.image_fmt_key))
-            if (prefImageFormat != null) {
-                val availMimes = getAvailableMimes()
-                prefImageFormat.entryValues = availMimes
-                prefImageFormat.entries = availMimes
-                prefImageFormat.summaryProvider = Preference.SummaryProvider<ListPreference> { _ ->
-                    val summary = prefImageFormat.value ?: "Not Selected"
-                    summary
-                }
-            }
-
-            val prefExposure: SeekBarPreference? = findPreference(resources.getString(R.string.exposure_key))
-            if (prefExposure != null) {
-                val expStateBundle = arguments?.getBundle("exposureState")
-                if (expStateBundle != null) {
-                    if (expStateBundle.getBoolean("supported")) {
-                        val exposure = exposureSettingFromBundle(expStateBundle)
-
-                        prefExposure.isEnabled = true
-                        prefExposure.min = exposure.min
-                        prefExposure.max = exposure.max
-                        prefExposure.value = exposure.index
-                        prefExposure.seekBarIncrement = exposure.step
+                pref.summaryProvider =
+                    Preference.SummaryProvider<ListPreference> { _ ->
+                        lookupQualityResolutionSummary(pref.value)
                     }
+            }
+        }
+
+        private fun setupImageFormatPreference() {
+            val pref: ListPreference? = findPreference(resources.getString(R.string.image_fmt_key))
+            if (pref != null) {
+                val availMimes = getAvailableMimes()
+                pref.entryValues = availMimes
+                pref.entries = availMimes
+                pref.summaryProvider =
+                    Preference.SummaryProvider<ListPreference> { _ ->
+                        val summary = pref.value ?: "Not Selected"
+                        summary
+                    }
+            }
+        }
+
+        private fun setupExposurePreference(args: Bundle) {
+            val pref: SeekBarPreference? = findPreference(resources.getString(R.string.exposure_key))
+            if (pref != null) {
+                val expStateBundle = args.getBundle("exposureState")
+                if (expStateBundle != null && expStateBundle.getBoolean("supported")) {
+                    val exposure = exposureSettingFromBundle(expStateBundle)
+
+                    pref.isEnabled = true
+                    pref.min = exposure.min
+                    pref.max = exposure.max
+                    pref.value = exposure.index
+                    pref.seekBarIncrement = exposure.step
                 }
             }
+        }
 
+        private fun setupVideoDurationPreference() {
             // NOTE(davide): Validate user input. There is a XML attribute that should do that, but
             // it didn't work...
             // TODO(davide): Is there a way to disable the OK button in the dialog box on invalid
             // inputs? Currently we just discard them
-            val prefVideoDuration: EditTextPreference? = findPreference(resources.getString(R.string.video_duration_key))
-            if (prefVideoDuration != null) {
-                prefVideoDuration.setOnPreferenceChangeListener { _, newValue ->
+            val pref: EditTextPreference? = findPreference(resources.getString(R.string.video_duration_key))
+            if (pref != null) {
+                pref.setOnPreferenceChangeListener { _, newValue ->
                     val duration = newValue as String
                     var valid = (duration.first() != '0')
                     if (valid) {
@@ -110,6 +136,20 @@ class SettingActivity : AppCompatActivity() {
                         }
                     }
                     valid
+                }
+            }
+        }
+        private fun setupFiltersPreference(args: Bundle) {
+            val pref: DropDownPreference? = findPreference(resources.getString(R.string.filter_key))
+            if (pref != null) {
+                val isBeefy = args.getBoolean("isBeefy")
+                if (!isBeefy) {
+                    // NOTE(davide): Don't show expensive filters on weak devices
+                    assert(pref.entries.size > 5)
+                    assert(pref.entryValues.size > 5)
+
+                    pref.entries = pref.entries.dropLast(EXPENSIVE_FILTER_COUNT).toTypedArray()
+                    pref.entryValues = pref.entryValues.dropLast(EXPENSIVE_FILTER_COUNT).toTypedArray()
                 }
             }
         }

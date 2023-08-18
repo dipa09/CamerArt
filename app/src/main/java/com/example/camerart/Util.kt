@@ -117,32 +117,6 @@ fun describeMeteringMode(mode: Int): String {
     return sb.toString()
 }
 
-// https://developer.android.com/training/camerax/devices
-// https://support.google.com/googleplay/answer/1727131?hl=en-GB
-fun deviceHasBeenTested(): Boolean {
-    var result = false
-    try {
-        // TODO(davide): Remember to change this to the main branch
-        val source = "https://raw.githubusercontent.com/dipa09/CamerArt/camera/supported_devices.txt"
-        val url = URL(source)
-        val conn: HttpsURLConnection = url.openConnection() as HttpsURLConnection
-        val br = BufferedReader(InputStreamReader(conn.inputStream))
-        var line: String?
-
-        val models = MutableList(1) {""}
-        while (br.readLine().also { line = it } != null) {
-            models.add(line!!)
-        }
-        //models.add("ONE E1003")
-
-        result = models.binarySearch(Build.MODEL) >= 0
-    } catch (e: Exception) {
-        result = false
-    }
-
-    return result
-}
-
 fun infoDialog(context: Context) {
     val doNothing = { _: DialogInterface, _: Int -> }
 
@@ -213,3 +187,14 @@ fun stringToIntOr0(s: String): Int {
         0
     }
 }
+
+data class VideoType(val uri : String, val thumbnail : Bitmap?){
+    fun getVideoThumbnail() : Bitmap? {return thumbnail}
+}
+
+fun kilobytes(x: Long): Long { return x*1024 }
+fun megabytes(x: Long): Long { return x*1024*1024 }
+fun gigabytes(x: Long): Long { return x*1024*1024*1024 }
+
+// NOTE(davide): Indicates that a code path is unreachable, hence it must NOT be caught
+class UnreachableCodePath : Exception("unreachable code path")
