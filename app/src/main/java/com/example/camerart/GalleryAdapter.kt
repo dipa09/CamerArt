@@ -1,16 +1,17 @@
 package com.example.camerart
 
+import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.recyclerview.widget.RecyclerView
-import androidx.core.net.toUri
+import com.bumptech.glide.Glide
 
-class ImageGalleryAdapter(private val imageUris: List<String>) :
+class ImageGalleryAdapter(context: Context, private val imageUris: List<String>) :
     RecyclerView.Adapter<ImageGalleryAdapter.ImageViewHolder>() {
 
-
+    private val context = context
     class ImageViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val imageView: ImageView = itemView.findViewById(R.id.imageView)
     }
@@ -22,11 +23,10 @@ class ImageGalleryAdapter(private val imageUris: List<String>) :
 
     override fun onBindViewHolder(holder: ImageViewHolder, position: Int) {
         val imageUri = imageUris[position]
-        val uri = imageUri.toUri()
-        // Load and display the image from the URI
-        //val bitmap = BitmapFactory.decodeFile(imageUri)
-        holder.imageView.setImageURI(uri)
-
+        //uso glide per avere una lib efficente per caricare le immagini
+        Glide.with(context)
+            .load(imageUri)
+            .into(holder.imageView)
     }
 
     override fun getItemCount(): Int {
@@ -34,6 +34,7 @@ class ImageGalleryAdapter(private val imageUris: List<String>) :
     }
 }
 
+/*
 class VideoGalleryAdapter(private val videos: List<VideoType>) :
     RecyclerView.Adapter<VideoGalleryAdapter.ImageViewHolder>() {
 
@@ -60,3 +61,4 @@ class VideoGalleryAdapter(private val videos: List<VideoType>) :
         return videos.size
     }
 }
+ */

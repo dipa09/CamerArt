@@ -6,6 +6,7 @@ import android.app.ActivityOptions
 import android.content.*
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.media.MediaActionSound
 import android.net.Uri
 import android.os.Build
@@ -132,7 +133,7 @@ class MainActivity : AppCompatActivity() {
     private var showVideoStats: Boolean = false
 
     // Preview
-    private var scaleType: PreviewView.ScaleType = PreviewView.ScaleType.FIT_CENTER
+    private var scaleType: PreviewView.ScaleType = PreviewView.ScaleType.FILL_CENTER
 
     private var requestedFormat: String = MIME_TYPE_JPEG
     private var exposureCompensationIndex: Int = 0
@@ -250,6 +251,24 @@ class MainActivity : AppCompatActivity() {
         viewBinding.settingsButton.setOnClickListener { launchSetting() }
         viewBinding.playButton.setOnClickListener { controlVideoRecording() }
         viewBinding.galleryButton.setOnClickListener { launchGallery() }
+
+        viewBinding.btnFoto.setOnClickListener{
+            currMode= MODE_CAPTURE
+            viewBinding.btnVideo.setTextColor(Color.parseColor("#FFFFFF"))
+            viewBinding.btnFoto.setTextColor(Color.parseColor("#58A0C4"))
+            viewBinding.photoButton.setBackgroundResource(R.drawable.ic_shutter)
+            viewBinding.muteButton.visibility = View.INVISIBLE
+            viewBinding.playButton.visibility = View.INVISIBLE
+            startCamera()
+        }
+        viewBinding.btnVideo.setOnClickListener {
+            currMode = MODE_VIDEO
+            viewBinding.btnFoto.setTextColor(Color.parseColor("#FFFFFF"))
+            viewBinding.btnVideo.setTextColor(Color.parseColor("#58A0C4"))
+            viewBinding.photoButton.setBackgroundResource((R.drawable.baseline_play_circle_24))
+            viewBinding.muteButton.visibility = View.VISIBLE
+            startCamera()
+        }
         if (cameraFeatures.hasFront) {
             viewBinding.cameraButton.setOnClickListener { toggleCamera() }
         } else {
@@ -274,16 +293,14 @@ class MainActivity : AppCompatActivity() {
 
     private fun toggleAudio() {
         audioEnabled = !audioEnabled
-        val alpha = if (audioEnabled) 0xff/2 else 0xff
-        viewBinding.muteButton.background.alpha = alpha
+        if (audioEnabled) viewBinding.muteButton.setBackgroundResource(R.drawable.baseline_mic_none_24)
+        else viewBinding.muteButton.setBackgroundResource(R.drawable.baseline_mic_off_24)
     }
 
     private fun toggleCamera() {
         lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK) {
-            viewBinding.cameraButton.background.alpha = 0xff/2
             CameraSelector.LENS_FACING_FRONT
         } else {
-            viewBinding.cameraButton.background.alpha = 0xff
             CameraSelector.LENS_FACING_BACK
         }
         startCamera()
@@ -305,6 +322,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun launchGallery() {
         val intent = Intent(this, GalleryActivity::class.java)
+
         this.startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this).toBundle())
     }
     private fun flashModeFromPreference(prefValue: String): Int {
@@ -422,9 +440,9 @@ class MainActivity : AppCompatActivity() {
 
                 resources.getString(R.string.scaling_key) -> {
                     val newScaleType = when (pref.value) {
-                        resources.getString(R.string.scaling_value_center) -> PreviewView.ScaleType.FIT_CENTER
-                        resources.getString(R.string.scaling_value_start)  -> PreviewView.ScaleType.FIT_START
-                        resources.getString(R.string.scaling_value_end)    -> PreviewView.ScaleType.FIT_END
+                        resources.getString(R.string.scaling_value_center) -> PreviewView.ScaleType.FILL_CENTER
+                        resources.getString(R.string.scaling_value_start)  -> PreviewView.ScaleType.FILL_START
+                        resources.getString(R.string.scaling_value_end)    -> PreviewView.ScaleType.FILL_END
                         else -> scaleType
                     }
 
@@ -586,7 +604,6 @@ class MainActivity : AppCompatActivity() {
                 ContextCompat.getMainExecutor(this),
                 object : ImageCapture.OnImageSavedCallback {
                     override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                        // NOTE(davide): How can it saves the image without having the URI?
                         val uri = output.savedUri
                         if (uri != null)
                             showPhotoSavedAt(uri)
@@ -658,9 +675,11 @@ class MainActivity : AppCompatActivity() {
         if (rec != null) {
             if (playing) {
                 rec.pause()
+                viewBinding.playButton.setBackgroundResource(R.drawable.baseline_play_arrow_24)
                 Toast.makeText(baseContext, resources.getString(R.string.paused), Toast.LENGTH_SHORT).show()
             } else {
                 rec.resume()
+                viewBinding.playButton.setBackgroundResource(R.drawable.baseline_pause_24)
                 Toast.makeText(baseContext, resources.getString(R.string.resumed), Toast.LENGTH_SHORT).show()
             }
             playing = !playing
@@ -675,6 +694,7 @@ class MainActivity : AppCompatActivity() {
             recording = null
             viewBinding.playButton.visibility = View.INVISIBLE
             viewBinding.muteButton.visibility = View.VISIBLE
+            viewBinding.photoButton.setBackgroundResource(R.drawable.baseline_play_circle_24)
             viewBinding.statsText.apply {
                 text = ""
                 visibility = View.INVISIBLE
@@ -690,11 +710,10 @@ class MainActivity : AppCompatActivity() {
     private fun captureVideo() {
         val videoCapture = this.videoCapture ?: return
 
+        viewBinding.playButton.visibility = View.VISIBLE
         viewBinding.photoButton.isEnabled = false
         if (stopRecording())
             return
-
-        viewBinding.muteButton.visibility = View.INVISIBLE
 
         var recDurationNanos = Long.MAX_VALUE
 
@@ -718,6 +737,8 @@ class MainActivity : AppCompatActivity() {
             }
             .start(ContextCompat.getMainExecutor(this)) { recordEvent -> handleRecordEvent(recordEvent, recDurationNanos) }
 
+        viewBinding.photoButton.setBackgroundResource(R.drawable.baseline_stop_circle_24)
+        viewBinding.muteButton.visibility = View.VISIBLE
         viewBinding.playButton.visibility = View.VISIBLE
         playing = true
     }
@@ -969,15 +990,12 @@ class MainActivity : AppCompatActivity() {
         }.start()
     }
 
-    private fun countdown(seconds: Int)
-    {
-        if (seconds > 0)
-        {
+    private fun countdown(seconds: Int) {
+        if (seconds > 0) {
             enableInfoTextView("$seconds")
 
             object : CountDownTimer(delayBeforeActionSeconds.toLong()*1000, 1000) {
-                override fun onTick(reamaining_ms: Long)
-                {
+                override fun onTick(reamaining_ms: Long) {
                     viewBinding.infoText.text = "${reamaining_ms / 1000}"
                 }
 
@@ -1089,7 +1107,7 @@ class MainActivity : AppCompatActivity() {
                     if (diffX < 0) {
                         Log.d("Gesture", "Left swipe")
 
-                        // TODO(davide): Start gallery activity
+                        launchGallery()
                     } else {
                         Log.d("Gesture", "Right swipe")
 
