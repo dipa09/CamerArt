@@ -136,7 +136,6 @@
         <SwitchPreferenceCompat
             app:key="@string/qrcode_key"
             app:title="@string/qrcode"
-            app:summary="@string/qrcode_summary"
             app:defaultValue="false" />
 
         <SwitchPreferenceCompat

@@ -95,7 +95,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var soundManager: SoundManager
 
-    // Gesture stuff
+    // Gesture
     private lateinit var  commonDetector: GestureDetectorCompat
     private lateinit var scaleDetector: ScaleGestureDetector
     private var scaling: Boolean = false
@@ -111,6 +111,7 @@ class MainActivity : AppCompatActivity() {
     private var currCamControl: CameraControl? = null
 
     private var currMode: Int = MODE_CAPTURE
+    private var prevMode: Int = MODE_CAPTURE
 
     // Capture
     private var lensFacing: Int = CameraSelector.LENS_FACING_BACK
@@ -171,9 +172,17 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
+    // NOTE(davide): Call startCamera() after this
+    private fun setCameraMode(newMode: Int) {
+        assert(newMode != currMode)
+        prevMode = currMode
+        currMode = newMode
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         cameraExecutor.shutdown()
+        barcodeScanner?.close()
     }
 
     override fun onResume() {
@@ -248,24 +257,27 @@ class MainActivity : AppCompatActivity() {
         viewBinding.playButton.setOnClickListener { controlVideoRecording() }
         viewBinding.galleryButton.setOnClickListener { launchGallery() }
 
-        viewBinding.btnFoto.setOnClickListener{
-            currMode= MODE_CAPTURE
-            viewBinding.btnVideo.setTextColor(Color.parseColor("#FFFFFF"))
-            viewBinding.btnFoto.setTextColor(Color.parseColor("#58A0C4"))
-            viewBinding.photoButton.setBackgroundResource(R.drawable.ic_shutter)
-            viewBinding.muteButton.visibility = View.INVISIBLE
-            viewBinding.playButton.visibility = View.INVISIBLE
-            startCamera()
+        viewBinding.btnFoto.setOnClickListener {
+            if (currMode != MODE_CAPTURE) {
+                viewBinding.btnVideo.setTextColor(Color.WHITE)
+                viewBinding.btnFoto.setTextColor(Color.parseColor("#58A0C4"))
+                viewBinding.photoButton.setBackgroundResource(R.drawable.ic_shutter)
+                viewBinding.muteButton.visibility = View.INVISIBLE
+                viewBinding.playButton.visibility = View.INVISIBLE
+                setCameraMode(MODE_CAPTURE)
+                startCamera()
+            }
         }
 
         viewBinding.btnVideo.setOnClickListener {
-            currMode = MODE_VIDEO
-            viewBinding.btnFoto.setTextColor(Color.parseColor("#FFFFFF"))
-            viewBinding.btnVideo.setTextColor(Color.parseColor("#58A0C4"))
-            viewBinding.photoButton.setBackgroundResource((R.drawable.baseline_play_circle_24))
-            viewBinding.muteButton.visibility = View.VISIBLE
-            Log.d("XX", "HERE")
-            startCamera()
+            if (currMode != MODE_VIDEO) {
+                viewBinding.btnFoto.setTextColor(Color.WHITE)
+                viewBinding.btnVideo.setTextColor(Color.parseColor("#58A0C4"))
+                viewBinding.photoButton.setBackgroundResource((R.drawable.baseline_play_circle_24))
+                viewBinding.muteButton.visibility = View.VISIBLE
+                setCameraMode(MODE_VIDEO)
+                startCamera()
+            }
         }
 
         if (cameraFeatures.hasFront) {
@@ -376,6 +388,7 @@ class MainActivity : AppCompatActivity() {
     // a random exception.
     private fun loadPreferences(sharedPreference: SharedPreferences, onCreate: Boolean): Boolean {
         var changeCount = 0
+        var gotQR = false
         var newCaptureMode: Int = captureMode
 
         for (pref in sharedPreference.all.iterator()) {
@@ -498,18 +511,8 @@ class MainActivity : AppCompatActivity() {
                 resources.getString(R.string.video_stats_key)    -> { showVideoStats = (pref.value as Boolean) }
                 resources.getString(R.string.exposure_key)       -> { exposureCompensationIndex = pref.value as Int }
                 resources.getString(R.string.countdown_key)      -> { delayBeforeActionSeconds = pref.value as Int }
-
-                resources.getString(R.string.multi_camera_key) -> {
-                    //changeCount = toggleMode(pref.value as Boolean, MODE_MULTI_CAMERA, changeCount)
-                }
-
-                resources.getString(R.string.qrcode_key) -> {
-                    val newMode = if (pref.value as Boolean) MODE_QRCODE_SCANNER else MODE_CAPTURE
-                    if (newMode != currMode) {
-                        currMode = newMode
-                        ++changeCount
-                    }
-                }
+                resources.getString(R.string.qrcode_key)         -> { gotQR = pref.value as Boolean }
+                resources.getString(R.string.multi_camera_key)   -> { }
 
                 resources.getString(R.string.action_sound_key) -> {
                     if (pref.value as Boolean)
@@ -531,6 +534,16 @@ class MainActivity : AppCompatActivity() {
         if (newCaptureMode != captureMode) {
             jpegQuality = JPEG_QUALITY_UNINITIALIZED
             captureMode = newCaptureMode
+            ++changeCount
+        }
+
+        if (gotQR) {
+            if (currMode != MODE_QRCODE_SCANNER) {
+                setCameraMode(MODE_QRCODE_SCANNER)
+                ++changeCount
+            }
+        } else if (currMode == MODE_QRCODE_SCANNER) {
+            setCameraMode(prevMode)
             ++changeCount
         }
 

@@ -59,7 +59,6 @@
     <string name="countdown_summary">Quanti secondi aspettare prima di scattare la foto o video</string>
 
     <string name="qrcode">Scanner QR Code</string>
-    <string name="qrcode_summary">Scansiona QR Code</string>
 
     <string name="multi_camera">Camere Multiple</string>
     <string name="multi_camera_summary">Usa la camera anteriore e posteriore contemporaneamente</string>

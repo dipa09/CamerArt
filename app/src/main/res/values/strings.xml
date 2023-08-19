@@ -104,7 +104,6 @@
 
     <string name="qrcode_key" translatable="false">qrcode</string>
     <string name="qrcode">QR Code Scanner</string>
-    <string name="qrcode_summary">Scan QR Codes</string>
 
     <string name="multi_camera_key" translatable="false">mltcam</string>
     <string name="multi_camera">Multi Camera</string>
