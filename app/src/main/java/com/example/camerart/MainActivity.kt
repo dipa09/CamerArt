@@ -33,6 +33,7 @@ import androidx.core.content.PermissionChecker
 import androidx.core.view.GestureDetectorCompat
 import androidx.preference.PreferenceManager
 import com.example.camerart.databinding.ActivityMainBinding
+import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -89,6 +90,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var cameraExecutor: ExecutorService
 
     private var cameraController: LifecycleCameraController? = null
+    private var barcodeScanner: BarcodeScanner? = null
     private var qrCode: QrCode? = null
 
     private lateinit var soundManager: SoundManager
@@ -181,6 +183,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initialize() {
+        cameraFeatures = CameraFeatures(getCameraProvider(), packageManager)
+
         soundManager = SoundManager()
 
         initialBrightness = window.attributes.screenBrightness
@@ -194,6 +198,7 @@ class MainActivity : AppCompatActivity() {
                 putBoolean("isBeefy", isBeefy)
                 putInt(resources.getString(R.string.jpeg_quality_key), JPEG_QUALITY_LATENCY)
                 putBoolean(resources.getString(R.string.action_sound_key), noisy)
+
                 apply()
             }
 
@@ -216,11 +221,6 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        //Log.d(TAG, "ON CREATE START")
-
-
-        //dumpCameraFeatures(packageManager)
-        cameraFeatures = CameraFeatures(getCameraProvider(), packageManager)
 
         /*
         // NOTE(davide): This must come before setContentView
@@ -230,7 +230,6 @@ class MainActivity : AppCompatActivity() {
             exitTransition = Slide()
         }
         */
-
 
         viewBinding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(viewBinding.root)
@@ -258,14 +257,17 @@ class MainActivity : AppCompatActivity() {
             viewBinding.playButton.visibility = View.INVISIBLE
             startCamera()
         }
+
         viewBinding.btnVideo.setOnClickListener {
             currMode = MODE_VIDEO
             viewBinding.btnFoto.setTextColor(Color.parseColor("#FFFFFF"))
             viewBinding.btnVideo.setTextColor(Color.parseColor("#58A0C4"))
             viewBinding.photoButton.setBackgroundResource((R.drawable.baseline_play_circle_24))
             viewBinding.muteButton.visibility = View.VISIBLE
+            Log.d("XX", "HERE")
             startCamera()
         }
+
         if (cameraFeatures.hasFront) {
             viewBinding.cameraButton.setOnClickListener { toggleCamera() }
         } else {
@@ -286,8 +288,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         cameraExecutor = Executors.newSingleThreadExecutor()
-
-        //Log.d(TAG, "ON CREATE END")
     }
 
     private fun toggleAudio() {
@@ -316,6 +316,7 @@ class MainActivity : AppCompatActivity() {
         }
         intent.putExtra("features", cameraFeatures.toBundle(wantFront))
         intent.putExtra("isBeefy", isBeefy)
+        intent.putExtra("cameraMode", currMode)
 
         this.startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this).toBundle())
     }
@@ -899,16 +900,16 @@ class MainActivity : AppCompatActivity() {
         val options = BarcodeScannerOptions.Builder()
             .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
             .build()
-        val barcodeScanner = BarcodeScanning.getClient(options)
+        val scanner = BarcodeScanning.getClient(options)
 
         controller.setImageAnalysisAnalyzer(
             ContextCompat.getMainExecutor(this),
             MlKitAnalyzer(
-                listOf(barcodeScanner),
+                listOf(scanner),
                 COORDINATE_SYSTEM_VIEW_REFERENCED,
                 ContextCompat.getMainExecutor(this)
             ) { result: MlKitAnalyzer.Result? ->
-                val barcodes = result?.getValue(barcodeScanner)
+                val barcodes = result?.getValue(scanner)
                 if (barcodes == null || barcodes.size == 0 || barcodes.first() == null) {
                     viewFinder.overlay.clear()
                     qrCode = null
@@ -932,6 +933,7 @@ class MainActivity : AppCompatActivity() {
 
             cameraController = controller
             viewFinder.controller = controller
+            barcodeScanner = scanner
         } catch (ex: IllegalStateException) {
             Log.e(TAG, "unable to start qrcode sacnner: $ex")
         }
@@ -954,12 +956,15 @@ class MainActivity : AppCompatActivity() {
     private fun releaseQrCodeScanner() {
         val controller = cameraController
         if (controller != null) {
-            val viewFinder = viewBinding.viewFinder
-            Log.d("XX", "CLEAR")
-            viewFinder.overlay.clear()
-            viewFinder.controller = null
             controller.unbind()
+            barcodeScanner?.close()
+
+            val viewFinder = viewBinding.viewFinder
+            viewFinder.controller = null
+            viewFinder.overlay.clear()
+
             cameraController = null
+            barcodeScanner = null
             qrCode = null
         }
     }

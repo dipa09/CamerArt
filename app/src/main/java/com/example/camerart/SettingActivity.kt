@@ -10,6 +10,7 @@ import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SeekBarPreference
+import androidx.preference.SwitchPreferenceCompat
 
 class SettingActivity : AppCompatActivity() {
     class SettingsFragment : PreferenceFragmentCompat() {
@@ -38,6 +39,7 @@ class SettingActivity : AppCompatActivity() {
                 setupExposurePreference(args)
                 setupVideoDurationPreference()
                 setupFiltersPreference(args)
+                setupQrCodeScannerPreference(args)
             }
         }
 
@@ -143,6 +145,14 @@ class SettingActivity : AppCompatActivity() {
                     pref.entries = pref.entries.dropLast(EXPENSIVE_FILTER_COUNT).toTypedArray()
                     pref.entryValues = pref.entryValues.dropLast(EXPENSIVE_FILTER_COUNT).toTypedArray()
                 }
+            }
+        }
+
+        private fun setupQrCodeScannerPreference(args: Bundle) {
+            val pref: SwitchPreferenceCompat? = findPreference(resources.getString(R.string.qrcode_key))
+            if (pref != null) {
+                val currMode = args.getInt("cameraMode")
+                pref.isChecked = (currMode == MainActivity.MODE_QRCODE_SCANNER)
             }
         }
 

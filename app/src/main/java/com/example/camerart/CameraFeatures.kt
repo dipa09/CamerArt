@@ -128,12 +128,3 @@ fun videoQualityFromName(name: String): Quality {
         else -> Quality.HIGHEST
     }
 }
-
-/*
-fun cameraFeaturesFromBundle(bundle: Bundle): CameraFeatures {
-    return CameraFeatures(
-        bundle.getBoolean("hasFront"),
-        bundle.getBoolean("hasFlash"),
-        bundle.getBoolean("hasMulti"))
-}
- */

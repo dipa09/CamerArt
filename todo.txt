@@ -6,6 +6,4 @@
 - Face detection
 - Multi-thread the filter
 
-- Video info won't be passed to setting activity if the mode is capture
 - We are not restoring last camera mode at startup, because we remove the preference
-- Switching between video and qrcode sometimes doesn't clear the overlay
