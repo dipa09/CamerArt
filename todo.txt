@@ -6,4 +6,3 @@
 - Face detection
 - Multi-thread the filter
 
-- We are not restoring last camera mode at startup, because we removed the preference

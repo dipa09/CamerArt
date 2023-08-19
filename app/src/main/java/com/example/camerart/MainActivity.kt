@@ -179,6 +179,13 @@ class MainActivity : AppCompatActivity() {
         currMode = newMode
     }
 
+    override fun onPause() {
+        super.onPause()
+
+        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+        prefs.edit().putInt("lastCameraMode", currMode).apply()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         cameraExecutor.shutdown()
@@ -221,10 +228,35 @@ class MainActivity : AppCompatActivity() {
             }.start()
         } else {
             isBeefy = prefs.getBoolean("isBeefy", false)
+            currMode = prefs.getInt("lastCameraMode", MODE_CAPTURE)
+            prevMode = if (currMode == MODE_QRCODE_SCANNER)
+                MODE_CAPTURE
+            else
+                currMode
             loadPreferences(prefs, true)
         }
 
+        if (currMode == MODE_VIDEO)
+            enableVideoUI()
+        else
+            enableCaptureUI()
+
         startCamera()
+    }
+
+    private fun enableCaptureUI() {
+        viewBinding.btnVideo.setTextColor(Color.WHITE)
+        viewBinding.btnFoto.setTextColor(Color.parseColor("#58A0C4"))
+        viewBinding.photoButton.setBackgroundResource(R.drawable.ic_shutter)
+        viewBinding.muteButton.visibility = View.INVISIBLE
+        viewBinding.playButton.visibility = View.INVISIBLE
+    }
+
+    private fun enableVideoUI() {
+        viewBinding.btnFoto.setTextColor(Color.WHITE)
+        viewBinding.btnVideo.setTextColor(Color.parseColor("#58A0C4"))
+        viewBinding.photoButton.setBackgroundResource((R.drawable.baseline_play_circle_24))
+        viewBinding.muteButton.visibility = View.VISIBLE
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -259,11 +291,7 @@ class MainActivity : AppCompatActivity() {
 
         viewBinding.btnFoto.setOnClickListener {
             if (currMode != MODE_CAPTURE) {
-                viewBinding.btnVideo.setTextColor(Color.WHITE)
-                viewBinding.btnFoto.setTextColor(Color.parseColor("#58A0C4"))
-                viewBinding.photoButton.setBackgroundResource(R.drawable.ic_shutter)
-                viewBinding.muteButton.visibility = View.INVISIBLE
-                viewBinding.playButton.visibility = View.INVISIBLE
+                enableCaptureUI()
                 setCameraMode(MODE_CAPTURE)
                 startCamera()
             }
@@ -271,10 +299,7 @@ class MainActivity : AppCompatActivity() {
 
         viewBinding.btnVideo.setOnClickListener {
             if (currMode != MODE_VIDEO) {
-                viewBinding.btnFoto.setTextColor(Color.WHITE)
-                viewBinding.btnVideo.setTextColor(Color.parseColor("#58A0C4"))
-                viewBinding.photoButton.setBackgroundResource((R.drawable.baseline_play_circle_24))
-                viewBinding.muteButton.visibility = View.VISIBLE
+                enableVideoUI()
                 setCameraMode(MODE_VIDEO)
                 startCamera()
             }
