@@ -175,15 +175,20 @@ class MainActivity : AppCompatActivity() {
     // NOTE(davide): Call startCamera() after this
     private fun setCameraMode(newMode: Int) {
         assert(newMode != currMode)
-        prevMode = currMode
+
+        if (currMode != MODE_QRCODE_SCANNER)
+            prevMode = currMode
         currMode = newMode
+
+        viewBinding.photoButton.isEnabled = (currMode != MODE_QRCODE_SCANNER)
     }
 
     override fun onPause() {
         super.onPause()
 
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
-        prefs.edit().putInt("lastCameraMode", currMode).apply()
+        if (currMode != MODE_QRCODE_SCANNER)
+            prefs.edit().putInt("lastCameraMode", currMode).apply()
     }
 
     override fun onDestroy() {
@@ -199,10 +204,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initialize() {
-        cameraFeatures = CameraFeatures(getCameraProvider(), packageManager)
-
-        soundManager = SoundManager()
-
         initialBrightness = window.attributes.screenBrightness
 
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
@@ -229,10 +230,6 @@ class MainActivity : AppCompatActivity() {
         } else {
             isBeefy = prefs.getBoolean("isBeefy", false)
             currMode = prefs.getInt("lastCameraMode", MODE_CAPTURE)
-            prevMode = if (currMode == MODE_QRCODE_SCANNER)
-                MODE_CAPTURE
-            else
-                currMode
             loadPreferences(prefs, true)
         }
 
@@ -262,6 +259,9 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        cameraFeatures = CameraFeatures(getCameraProvider(), packageManager)
+        soundManager = SoundManager()
 
         /*
         // NOTE(davide): This must come before setContentView
@@ -363,20 +363,201 @@ class MainActivity : AppCompatActivity() {
 
         this.startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this).toBundle())
     }
-    private fun flashModeFromPreference(prefValue: String): Int {
-        return when (prefValue) {
-            resources.getString(R.string.flash_value_on) -> ImageCapture.FLASH_MODE_ON
-            resources.getString(R.string.flash_value_off) -> ImageCapture.FLASH_MODE_OFF
-            else -> ImageCapture.FLASH_MODE_AUTO
+
+    private fun updateFlashMode(prefs: SharedPreferences): Int {
+        var changed = 0
+        val flashModeName = prefs.getString(resources.getString(R.string.flash_key), "")
+        if (flashModeName != null) {
+            val newFlashMode = when (flashModeName) {
+                resources.getString(R.string.flash_value_on) -> ImageCapture.FLASH_MODE_ON
+                resources.getString(R.string.flash_value_off) -> ImageCapture.FLASH_MODE_OFF
+                else -> ImageCapture.FLASH_MODE_AUTO
+            }
+
+            if (newFlashMode != flashMode) {
+                flashMode = newFlashMode
+                changed = 1
+            }
+        }
+
+        return changed
+    }
+
+    private fun updateImageFormat(prefs: SharedPreferences) {
+        val pref = prefs.getString(resources.getString(R.string.image_fmt_key), "")
+        if (pref != null && pref.isNotEmpty()) {
+            requestedFormat = pref
         }
     }
 
-    private fun captureModeFromPreference(name: String): Int {
-        var mode = ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
-        if (name == resources.getString(R.string.capture_value_quality))
-            mode = ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY
-        return mode
+    private fun updateTargetRotation(prefs: SharedPreferences): Int {
+        var changed = 0
+
+        val pref = prefs.getString(resources.getString(R.string.rotation_key), "")
+        if (pref != null) {
+            val newRot = when (pref) {
+                "0" -> Surface.ROTATION_0
+                "90" -> Surface.ROTATION_90
+                "180" -> Surface.ROTATION_180
+                "270" -> Surface.ROTATION_270
+                else -> TARGET_ROTATION_UNINITIALIZED
+            }
+
+            if (newRot != targetRotation) {
+                targetRotation = newRot
+                changed = 1
+            }
+        }
+
+        return changed
     }
+
+    private fun updateCaptureModeAndJPEGQuality(prefs: SharedPreferences): Int {
+        var changed = 0
+
+        // NOTE(davide): The capture mode takes precedence
+        val newJpegQuality = prefs.getInt(resources.getString(R.string.jpeg_quality_key), 1)
+        if (newJpegQuality != jpegQuality) {
+            jpegQuality = newJpegQuality
+            changed = 1
+        }
+
+        val prefCapture = prefs.getString(resources.getString(R.string.capture_key), "")
+        if (prefCapture != null) {
+            var newCapMode = ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
+            if (prefCapture == resources.getString(R.string.capture_value_quality))
+                newCapMode = ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY
+
+            if (newCapMode != captureMode) {
+                jpegQuality = JPEG_QUALITY_UNINITIALIZED
+                captureMode = newCapMode
+                changed = 1
+            }
+        }
+
+        return changed
+    }
+
+    private fun updateExtensionMode(prefs: SharedPreferences): Int {
+        var changed = 0
+
+        val pref = prefs.getString(resources.getString(R.string.extension_key), "")
+        if (pref != null) {
+            val newExtensionMode = extensionFromName(pref)
+            if (newExtensionMode != extensionMode) {
+                extensionMode = newExtensionMode
+                changed = 1
+            }
+        }
+
+        return changed
+    }
+
+    private fun updateScaling(prefs: SharedPreferences): Int {
+        var changed = 0
+
+        val pref = prefs.getString(resources.getString(R.string.scaling_key), "")
+        if (pref != null) {
+            val newScaleType = when (pref) {
+                resources.getString(R.string.scaling_value_center) -> PreviewView.ScaleType.FILL_CENTER
+                resources.getString(R.string.scaling_value_start) -> PreviewView.ScaleType.FILL_START
+                resources.getString(R.string.scaling_value_end) -> PreviewView.ScaleType.FILL_END
+                else -> scaleType
+            }
+
+            if (newScaleType != scaleType) {
+                scaleType = newScaleType
+                changed = 1
+            }
+        }
+
+        return changed
+    }
+
+    private fun updateMetering(prefs: SharedPreferences, onCreate: Boolean) {
+        val pref = prefs.getStringSet(resources.getString(R.string.metering_mode_key), null)
+        if (pref != null) {
+            var newMeteringMode = 0
+            for (meterName in pref) {
+                newMeteringMode = newMeteringMode or meteringModeFromPreference(meterName)
+            }
+
+            if (newMeteringMode != meteringMode) {
+                meteringMode = newMeteringMode
+                if (!onCreate)
+                    showFadingMessage(
+                        viewBinding.infoText,
+                        describeMeteringMode(meteringMode),
+                        2
+                    )
+            }
+        }
+    }
+
+    private fun updateAutoCancelDuration(prefs: SharedPreferences) {
+        val pref = prefs.getString(resources.getString(R.string.auto_cancel_duration_key), "")
+        if (pref != null) {
+            try {
+                autoCancelDuration = pref.toLong()
+            } catch (_: NumberFormatException) { }
+        }
+    }
+
+    private fun updateLumus(prefs: SharedPreferences) {
+        showLumus = prefs.getBoolean(resources.getString(R.string.lumus_key), false)
+        if (showLumus)
+            viewBinding.statsText.visibility = View.VISIBLE
+        else
+            viewBinding.statsText.visibility = View.INVISIBLE
+    }
+
+    private fun updateFilter(prefs: SharedPreferences) {
+        val pref = prefs.getString(resources.getString(R.string.filter_key), "")
+        if (pref != null) {
+            filterType = filterTypeFromPreference(pref)
+            //Log.d(TAG, "filter is $filterType -- ${pref.value as String}")
+        }
+    }
+
+    private fun updateVideoQuality(prefs: SharedPreferences): Int {
+        var changed = 0
+
+        val pref = prefs.getString(resources.getString(R.string.video_quality_key), "")
+        if (pref != null) {
+            val newVideoQuality = videoQualityFromName(pref)
+            if (newVideoQuality != videoQuality) {
+                videoQuality = newVideoQuality
+                changed = 1
+            }
+        }
+
+        return changed
+    }
+
+    private fun updateVideoDuration(prefs: SharedPreferences) {
+        val pref = prefs.getString(resources.getString(R.string.video_duration_key), "")
+        if (pref != null)
+            videoDuration = stringToIntOr0(pref)
+    }
+
+    private fun updateBrightness(prefs: SharedPreferences) {
+        val gotBrightness = getBool(R.string.brightness_key, prefs)
+        val layout = window.attributes
+        layout.screenBrightness = if (gotBrightness)
+            1f
+        else
+            initialBrightness
+        window.attributes = layout
+    }
+
+    private fun getBool(stringID: Int, prefs: SharedPreferences, defaultValue: Boolean = false): Boolean {
+        return prefs.getBoolean(resources.getString(stringID), defaultValue)
+    }
+
+    private fun getInt(stringID: Int, prefs: SharedPreferences, defaultValue: Int = 0): Int {
+        return prefs.getInt(resources.getString(stringID), defaultValue)
+    }
+
 
     private fun meteringModeFromPreference(name: CharSequence): Int {
         return when (name) {
@@ -411,158 +592,39 @@ class MainActivity : AppCompatActivity() {
     // NOTE(davide): For some reason, sometimes you need to delete app's data if you edit
     // a previous preference from root_preferences.xml or arrays.xml, otherwise you get
     // a random exception.
-    private fun loadPreferences(sharedPreference: SharedPreferences, onCreate: Boolean): Boolean {
+    private fun loadPreferences(prefs: SharedPreferences, onCreate: Boolean): Boolean {
         var changeCount = 0
         var gotQR = false
-        var newCaptureMode: Int = captureMode
 
-        for (pref in sharedPreference.all.iterator()) {
-            //Log.i(TAG, "preference ${pref.key}, ${pref.value}")
+        // Capture preferences
+        changeCount += updateFlashMode(prefs)
+        changeCount += updateCaptureModeAndJPEGQuality(prefs)
+        changeCount += updateTargetRotation(prefs)
+        changeCount += updateExtensionMode(prefs)
+        updateImageFormat(prefs)
+        updateMetering(prefs, onCreate)
+        updateAutoCancelDuration(prefs)
+        updateLumus(prefs)
+        updateFilter(prefs)
 
-            when (pref.key) {
-                resources.getString(R.string.flash_key) -> {
-                    val newFlashMode = flashModeFromPreference(pref.value as String)
-                    if (newFlashMode != flashMode) {
-                        flashMode = newFlashMode
-                        ++changeCount
-                    }
-                }
+        // Video preferences
+        changeCount += updateVideoQuality(prefs)
+        updateVideoDuration(prefs)
+        showVideoStats = getBool(R.string.video_stats_key, prefs)
 
-                resources.getString(R.string.capture_key) -> {
-                    newCaptureMode = captureModeFromPreference(pref.value as String)
-                    if (newCaptureMode != captureMode) {
-                        captureMode = newCaptureMode
-                        ++changeCount
-                    }
-                }
+        // Preview preferences
+        changeCount += updateScaling(prefs)
 
-                resources.getString(R.string.image_fmt_key) -> {
-                    requestedFormat = pref.value as String
-                    if (requestedFormat.isEmpty())
-                        requestedFormat = MIME_TYPE_JPEG
-                }
+        // Misc
+        exposureCompensationIndex = getInt(R.string.exposure_key, prefs)
+        delayBeforeActionSeconds = getInt(R.string.countdown_key, prefs)
+        if (getBool(R.string.action_sound_key, prefs))
+            soundManager.enable()
+        else
+            soundManager.disable()
+        updateBrightness(prefs)
 
-                resources.getString(R.string.jpeg_quality_key) -> {
-                    val newJpegQuality = pref.value as Int
-
-                    if (newJpegQuality != jpegQuality) {
-                        jpegQuality = newJpegQuality
-                        ++changeCount
-                    }
-                }
-
-                resources.getString(R.string.rotation_key) -> {
-                    val newTargetRotation = when (pref.value) {
-                        "0" -> Surface.ROTATION_0
-                        "90" -> Surface.ROTATION_90
-                        "180" -> Surface.ROTATION_180
-                        "270" -> Surface.ROTATION_270
-                        else -> TARGET_ROTATION_UNINITIALIZED
-                    }
-
-                    if (newTargetRotation != targetRotation) {
-                        targetRotation = newTargetRotation
-                        ++changeCount
-                    }
-                }
-
-                resources.getString(R.string.extension_key) -> {
-                    val newExtensionMode = extensionFromName(pref.value as String)
-
-                    if (newExtensionMode != extensionMode) {
-                        extensionMode = newExtensionMode
-                        ++changeCount
-                    }
-                }
-
-                resources.getString(R.string.scaling_key) -> {
-                    val newScaleType = when (pref.value) {
-                        resources.getString(R.string.scaling_value_center) -> PreviewView.ScaleType.FILL_CENTER
-                        resources.getString(R.string.scaling_value_start)  -> PreviewView.ScaleType.FILL_START
-                        resources.getString(R.string.scaling_value_end)    -> PreviewView.ScaleType.FILL_END
-                        else -> scaleType
-                    }
-
-                    if (newScaleType != scaleType) {
-                        scaleType = newScaleType
-                        ++changeCount
-                    }
-                }
-
-                resources.getString(R.string.metering_mode_key) -> {
-                    //Log.d("YYY", "${pref.value}")
-                    try {
-                        var newMeteringMode = 0
-                        for (meterName in pref.value as HashSet<String>) {
-                            newMeteringMode = newMeteringMode or meteringModeFromPreference(meterName)
-                        }
-
-                        if (newMeteringMode != meteringMode) {
-                            meteringMode = newMeteringMode
-                            if (!onCreate)
-                                showFadingMessage(viewBinding.infoText, describeMeteringMode(meteringMode), 2)
-                        }
-                    } catch (_: Exception) { }
-                }
-
-                resources.getString(R.string.auto_cancel_duration_key) -> {
-                    try {
-                        autoCancelDuration = (pref.value as String).toLong()
-                    } catch (_: NumberFormatException) { }
-                }
-
-                resources.getString(R.string.lumus_key) -> {
-                    showLumus = pref.value as Boolean
-                    if (showLumus)
-                        viewBinding.statsText.visibility = View.VISIBLE
-                    else
-                        viewBinding.statsText.visibility = View.INVISIBLE
-                }
-
-                resources.getString(R.string.filter_key) -> {
-                    filterType = filterTypeFromPreference(pref.value as String)
-                    //Log.d(TAG, "filter is $filterType -- ${pref.value as String}")
-                }
-
-                resources.getString(R.string.video_quality_key) -> {
-                    val newVideoQuality = videoQualityFromName(pref.value as String)
-                    if (newVideoQuality != videoQuality) {
-                        videoQuality = newVideoQuality
-                        ++changeCount
-                    }
-                }
-
-                resources.getString(R.string.video_duration_key) -> { videoDuration = stringToIntOr0(pref.value as String) }
-                resources.getString(R.string.video_stats_key)    -> { showVideoStats = (pref.value as Boolean) }
-                resources.getString(R.string.exposure_key)       -> { exposureCompensationIndex = pref.value as Int }
-                resources.getString(R.string.countdown_key)      -> { delayBeforeActionSeconds = pref.value as Int }
-                resources.getString(R.string.qrcode_key)         -> { gotQR = pref.value as Boolean }
-                resources.getString(R.string.multi_camera_key)   -> { }
-
-                resources.getString(R.string.action_sound_key) -> {
-                    if (pref.value as Boolean)
-                        soundManager.enable()
-                    else
-                        soundManager.disable()
-                }
-
-                resources.getString(R.string.brightness_key) -> {
-                    val gotBrightness = (pref.value as Boolean)
-                    val layout = window.attributes
-                    layout.screenBrightness = if (gotBrightness) 1f else initialBrightness
-                    window.attributes = layout
-                }
-            }
-        }
-
-        // NOTE(davide): Change JPEG quality unless the user changed the capture mode
-        if (newCaptureMode != captureMode) {
-            jpegQuality = JPEG_QUALITY_UNINITIALIZED
-            captureMode = newCaptureMode
-            ++changeCount
-        }
-
-        if (gotQR) {
+        if (getBool(R.string.qrcode_key, prefs)) {
             if (currMode != MODE_QRCODE_SCANNER) {
                 setCameraMode(MODE_QRCODE_SCANNER)
                 ++changeCount
@@ -589,17 +651,23 @@ class MainActivity : AppCompatActivity() {
         currCamControl = camControl
     }
 
+    private fun showToast(message: String) {
+        Toast.makeText(baseContext, message, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun showToast(stringID: Int) {
+        showToast(resources.getString(stringID))
+    }
+
     private fun showPhotoSavedAt(uri: Uri) {
         val msg = resources.getString(R.string.photo_saved_success) + " $uri"
-        Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
+        showToast(msg)
 
         Log.d(TAG, msg)
     }
 
     private fun showPhotoError(ex: Exception) {
-        val msg = resources.getString(R.string.photo_error)
-        Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
-
+        showToast(R.string.photo_error)
         Log.e(TAG, "Photo capture failed: ${ex.message}")
     }
 
@@ -698,11 +766,11 @@ class MainActivity : AppCompatActivity() {
             if (playing) {
                 rec.pause()
                 viewBinding.playButton.setBackgroundResource(R.drawable.baseline_play_arrow_24)
-                Toast.makeText(baseContext, resources.getString(R.string.paused), Toast.LENGTH_SHORT).show()
+                //showToast(R.string.paused)
             } else {
                 rec.resume()
                 viewBinding.playButton.setBackgroundResource(R.drawable.baseline_pause_24)
-                Toast.makeText(baseContext, resources.getString(R.string.resumed), Toast.LENGTH_SHORT).show()
+                //showToast(R.string.resumed)
             }
             playing = !playing
         }
@@ -776,7 +844,7 @@ class MainActivity : AppCompatActivity() {
                 soundManager.playOnce(MediaActionSound.STOP_VIDEO_RECORDING)
                 if (!event.hasError()) {
                     val msg = R.string.video_saved_success.toString() + "${event.outputResults.outputUri}"
-                    Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
+                    showToast(msg)
                     Log.d(TAG, msg)
                 } else {
                     recording?.close()
@@ -811,11 +879,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
     private fun takePhotoOrVideo() {
-        // TODO(davide): In QRCODE_MODE we need to disable the button
-        if (currMode == MODE_VIDEO)
-            captureVideo()
-        else
-            takePhoto()
+        when (currMode) {
+            MODE_CAPTURE -> takePhoto()
+            MODE_VIDEO   -> captureVideo()
+        }
     }
 
     private fun buildSelector(): CameraSelector {
@@ -924,7 +991,7 @@ class MainActivity : AppCompatActivity() {
                         Log.e(TAG, "Use case binding failed", e)
                         result = false
                     }
-                }
+                } // NOTE(davide): For some reason these two lines can't be indented properly
                                                }, ContextCompat.getMainExecutor(this))
                                          }, ContextCompat.getMainExecutor(this))
 
@@ -957,7 +1024,8 @@ class MainActivity : AppCompatActivity() {
                 val currQrCode = QrCode(barcodes[0])
                 qrCode = currQrCode
                 viewFinder.overlay.clear()
-                viewFinder.overlay.add(QrCodeDrawable(currQrCode))
+                if (barcodeScanner != null)
+                    viewFinder.overlay.add(QrCodeDrawable(currQrCode))
             }
         )
 
@@ -992,25 +1060,29 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun releaseQrCodeScanner() {
+        val viewFinder = viewBinding.viewFinder
+        viewFinder.overlay.clear()
+
         val controller = cameraController
         if (controller != null) {
+            //showToast("Release QRCODE")
+
             controller.unbind()
             barcodeScanner?.close()
 
-            val viewFinder = viewBinding.viewFinder
             viewFinder.controller = null
-            viewFinder.overlay.clear()
-
             cameraController = null
             barcodeScanner = null
             qrCode = null
         }
+
+        viewFinder.overlay.clear()
     }
 
     private fun startCamera() {
         //Log.d(TAG, "START CAMERA")
 
-        Log.d("XX", "currMode is $currMode")
+        //Log.d("XX", "currMode is $currMode")
         if (currMode == MODE_QRCODE_SCANNER) {
             releaseCamera()
             startQRScanner()
