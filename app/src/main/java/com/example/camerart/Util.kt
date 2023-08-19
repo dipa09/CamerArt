@@ -14,7 +14,6 @@ import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.ImageProxy
 import androidx.camera.extensions.ExtensionMode
 import androidx.camera.video.MediaStoreOutputOptions
-import androidx.camera.video.Quality
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -164,8 +163,19 @@ fun stringToIntOr0(s: String): Int {
     }
 }
 
-data class VideoType(val uri : String, val thumbnail : Bitmap?){
-    fun getVideoThumbnail() : Bitmap? {return thumbnail}
+fun bitmapFormatFromMime(mime: String): Bitmap.CompressFormat {
+    return when (mime) {
+        MainActivity.MIME_TYPE_JPEG -> Bitmap.CompressFormat.JPEG
+        MainActivity.MIME_TYPE_PNG -> Bitmap.CompressFormat.PNG
+        MainActivity.MIME_TYPE_WEBP -> {
+            if (Build.VERSION.SDK_INT >= MainActivity.MIN_VERSION_FOR_WEBP) {
+                Bitmap.CompressFormat.WEBP_LOSSY
+            } else {
+                throw IllegalArgumentException("Invalid image format")
+            }
+        }
+        else -> Bitmap.CompressFormat.JPEG
+    }
 }
 
 fun kilobytes(x: Long): Long { return x*1024 }
@@ -173,4 +183,4 @@ fun megabytes(x: Long): Long { return x*1024*1024 }
 fun gigabytes(x: Long): Long { return x*1024*1024*1024 }
 
 // NOTE(davide): Indicates that a code path is unreachable, hence it must NOT be caught
-class UnreachableCodePath : Exception("unreachable code path")
+class UnreachableCodePath(message: String) : Exception(message)

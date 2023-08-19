@@ -5,7 +5,6 @@ import android.annotation.SuppressLint
 import android.app.ActivityOptions
 import android.content.*
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
 import android.graphics.Color
 import android.media.MediaActionSound
 import android.net.Uri
@@ -43,7 +42,6 @@ import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
-import kotlin.collections.HashSet
 import kotlin.math.abs
 
 class MainActivity : AppCompatActivity() {
@@ -366,7 +364,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateFlashMode(prefs: SharedPreferences): Int {
         var changed = 0
-        val flashModeName = prefs.getString(resources.getString(R.string.flash_key), "")
+        val flashModeName = getStringPref(R.string.flash_key, prefs)
         if (flashModeName != null) {
             val newFlashMode = when (flashModeName) {
                 resources.getString(R.string.flash_value_on) -> ImageCapture.FLASH_MODE_ON
@@ -384,7 +382,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateImageFormat(prefs: SharedPreferences) {
-        val pref = prefs.getString(resources.getString(R.string.image_fmt_key), "")
+        val pref = getStringPref(R.string.image_fmt_key, prefs)
         if (pref != null && pref.isNotEmpty()) {
             requestedFormat = pref
         }
@@ -393,7 +391,7 @@ class MainActivity : AppCompatActivity() {
     private fun updateTargetRotation(prefs: SharedPreferences): Int {
         var changed = 0
 
-        val pref = prefs.getString(resources.getString(R.string.rotation_key), "")
+        val pref = getStringPref(R.string.rotation_key, prefs)
         if (pref != null) {
             val newRot = when (pref) {
                 "0" -> Surface.ROTATION_0
@@ -416,13 +414,13 @@ class MainActivity : AppCompatActivity() {
         var changed = 0
 
         // NOTE(davide): The capture mode takes precedence
-        val newJpegQuality = prefs.getInt(resources.getString(R.string.jpeg_quality_key), 1)
+        val newJpegQuality = getInt(R.string.jpeg_quality_key, prefs, 1)
         if (newJpegQuality != jpegQuality) {
             jpegQuality = newJpegQuality
             changed = 1
         }
 
-        val prefCapture = prefs.getString(resources.getString(R.string.capture_key), "")
+        val prefCapture = getStringPref(R.string.capture_key, prefs)
         if (prefCapture != null) {
             var newCapMode = ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
             if (prefCapture == resources.getString(R.string.capture_value_quality))
@@ -441,7 +439,7 @@ class MainActivity : AppCompatActivity() {
     private fun updateExtensionMode(prefs: SharedPreferences): Int {
         var changed = 0
 
-        val pref = prefs.getString(resources.getString(R.string.extension_key), "")
+        val pref = getStringPref(R.string.extension_key, prefs)
         if (pref != null) {
             val newExtensionMode = extensionFromName(pref)
             if (newExtensionMode != extensionMode) {
@@ -456,7 +454,7 @@ class MainActivity : AppCompatActivity() {
     private fun updateScaling(prefs: SharedPreferences): Int {
         var changed = 0
 
-        val pref = prefs.getString(resources.getString(R.string.scaling_key), "")
+        val pref = getStringPref(R.string.scaling_key, prefs)
         if (pref != null) {
             val newScaleType = when (pref) {
                 resources.getString(R.string.scaling_value_center) -> PreviewView.ScaleType.FILL_CENTER
@@ -495,7 +493,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateAutoCancelDuration(prefs: SharedPreferences) {
-        val pref = prefs.getString(resources.getString(R.string.auto_cancel_duration_key), "")
+        val pref = getStringPref(R.string.auto_cancel_duration_key, prefs)
         if (pref != null) {
             try {
                 autoCancelDuration = pref.toLong()
@@ -504,7 +502,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateLumus(prefs: SharedPreferences) {
-        showLumus = prefs.getBoolean(resources.getString(R.string.lumus_key), false)
+        showLumus = getBool(R.string.lumus_key, prefs)
         if (showLumus)
             viewBinding.statsText.visibility = View.VISIBLE
         else
@@ -512,7 +510,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateFilter(prefs: SharedPreferences) {
-        val pref = prefs.getString(resources.getString(R.string.filter_key), "")
+        val pref = getStringPref(R.string.filter_key, prefs)
         if (pref != null) {
             filterType = filterTypeFromPreference(pref)
             //Log.d(TAG, "filter is $filterType -- ${pref.value as String}")
@@ -522,7 +520,7 @@ class MainActivity : AppCompatActivity() {
     private fun updateVideoQuality(prefs: SharedPreferences): Int {
         var changed = 0
 
-        val pref = prefs.getString(resources.getString(R.string.video_quality_key), "")
+        val pref = getStringPref(R.string.video_quality_key, prefs)
         if (pref != null) {
             val newVideoQuality = videoQualityFromName(pref)
             if (newVideoQuality != videoQuality) {
@@ -535,7 +533,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateVideoDuration(prefs: SharedPreferences) {
-        val pref = prefs.getString(resources.getString(R.string.video_duration_key), "")
+        val pref = getStringPref(R.string.video_duration_key, prefs)
         if (pref != null)
             videoDuration = stringToIntOr0(pref)
     }
@@ -548,6 +546,10 @@ class MainActivity : AppCompatActivity() {
         else
             initialBrightness
         window.attributes = layout
+    }
+
+    private fun getStringPref(stringID: Int, prefs: SharedPreferences): String? {
+        return prefs.getString(resources.getString(stringID), "")
     }
 
     private fun getBool(stringID: Int, prefs: SharedPreferences, defaultValue: Boolean = false): Boolean {
@@ -594,7 +596,6 @@ class MainActivity : AppCompatActivity() {
     // a random exception.
     private fun loadPreferences(prefs: SharedPreferences, onCreate: Boolean): Boolean {
         var changeCount = 0
-        var gotQR = false
 
         // Capture preferences
         changeCount += updateFlashMode(prefs)
@@ -716,13 +717,11 @@ class MainActivity : AppCompatActivity() {
                             val sourceBitmap = imageProxy.toBitmap()
                             val destBitmap = filterBitmap(sourceBitmap, filterType)
 
-                            uri = contentResolver.insert(
-                                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                                    contentValues) ?: throw IOException("No media store")
+                            uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues) ?: throw IOException("No media store")
 
                             contentResolver.openOutputStream(uri)?.use {
                                 Log.d(TAG, "Start compressing")
-                                destBitmap.compress(Bitmap.CompressFormat.JPEG, jpegQuality, it)
+                                destBitmap.compress(bitmapFormatFromMime(requestedFormat), jpegQuality, it)
                             } ?: throw IOException("Failed to open output stream")
 
                             showPhotoSavedAt(uri)
@@ -740,24 +739,6 @@ class MainActivity : AppCompatActivity() {
                     override fun onError(ex: ImageCaptureException) { showPhotoError(ex) }
                 })
         }
-    }
-
-    private fun saveImage(resolver: ContentResolver, values: ContentValues, img: Image): Uri? {
-        var uri: Uri? = null
-        try {
-            uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-                ?: throw IOException("Failed to create MediaStore record")
-
-            resolver.openOutputStream(uri)?.use {
-                img.write(it)
-            } ?: throw IOException("Failed to open output stream")
-
-        } catch (exc: IOException) {
-            uri?.let { orphanUri ->
-                resolver.delete(orphanUri, null, null)
-            }
-        }
-        return uri
     }
 
     private fun controlVideoRecording() {

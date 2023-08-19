@@ -1,8 +1,0 @@
-- Animate transitions?
-- Info about gestures
-
-- Restore png
-- Test webp
-- Face detection
-- Multi-thread the filter
-
