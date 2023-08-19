@@ -78,11 +78,6 @@
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/video">
-        <SwitchPreferenceCompat
-            app:key="pref_use_video_temp"
-            app:title="Do a video"
-            app:defaultValue="false" />
-
         <ListPreference
             app:key="@string/video_quality_key"
             app:title="@string/quality"

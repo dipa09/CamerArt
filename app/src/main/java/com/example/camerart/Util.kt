@@ -15,12 +15,8 @@ import androidx.camera.core.ImageProxy
 import androidx.camera.extensions.ExtensionMode
 import androidx.camera.video.MediaStoreOutputOptions
 import androidx.camera.video.Quality
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.*
-import javax.net.ssl.HttpsURLConnection
 
 fun makeContentValues(displayName: String, mimeType: String): ContentValues {
     val values = ContentValues().apply {

@@ -5,7 +5,6 @@ import android.graphics.Rect
 import android.net.Uri
 import android.provider.CalendarContract
 import android.provider.Settings
-import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import com.google.mlkit.vision.barcode.common.Barcode
