@@ -177,12 +177,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-
-        if (loadPreferences(false)) {
-            //Log.d(TAG, "RESTART CAMERA")
+        if (loadPreferences(false))
             startCamera()
-        }
-        //Log.d(TAG, "ON RESUME ENDED")
     }
 
     private fun initialize() {
@@ -463,7 +459,7 @@ class MainActivity : AppCompatActivity() {
                         if (newMeteringMode != meteringMode) {
                             meteringMode = newMeteringMode
                             if (!onCreate)
-                                fadingMessage(describeMeteringMode(meteringMode), 2)
+                                showFadingMessage(viewBinding.infoText, describeMeteringMode(meteringMode), 2)
                         }
                     } catch (_: Exception) { }
                 }
@@ -571,7 +567,7 @@ class MainActivity : AppCompatActivity() {
         val imageCapture = imageCapture ?: return
 
         soundManager.prepare(MediaActionSound.SHUTTER_CLICK)
-        countdown(delayBeforeActionSeconds)
+        showCountdown(viewBinding.infoText, delayBeforeActionSeconds)
 
         val contentValues = makeContentValues(
             SimpleDateFormat(FILENAME_FORMAT, Locale.US).format(System.currentTimeMillis()),
@@ -717,7 +713,7 @@ class MainActivity : AppCompatActivity() {
                         viewBinding.statsText.visibility = View.VISIBLE
 
                     soundManager.prepare(MediaActionSound.START_VIDEO_RECORDING)
-                    countdown(delayBeforeActionSeconds)
+                    showCountdown(viewBinding.infoText, delayBeforeActionSeconds)
                 }
             }
             .start(ContextCompat.getMainExecutor(this)) { recordEvent -> handleRecordEvent(recordEvent, recDurationNanos) }
@@ -774,6 +770,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
     private fun takePhotoOrVideo() {
+        // TODO(davide): In QRCODE_MODE we need to disable the button
         if (currMode == MODE_VIDEO)
             captureVideo()
         else
@@ -967,10 +964,7 @@ class MainActivity : AppCompatActivity() {
             startQRScanner()
         } else {
             releaseQrCodeScanner()
-            if (currMode == MODE_MULTI_CAMERA) {
-                // TODO(davide): Multi camera support won't be available until CameraX 1.3...
-                throw UnreachableCodePath()
-            } else if (currMode == MODE_VIDEO) {
+            if (currMode == MODE_VIDEO) {
                 startNormalCamera()
             } else {
                 assert(currMode == MODE_CAPTURE)
@@ -983,41 +977,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         //Log.d(TAG, "START CAMERA ENDED")
-    }
-
-    private fun enableInfoTextView(mesg: String) {
-        viewBinding.infoText.apply {
-            text = mesg
-            visibility = View.VISIBLE
-        }
-    }
-
-    private fun disableInfoTextView() {
-        viewBinding.infoText.apply {
-            text = ""
-            visibility = View.INVISIBLE
-        }
-    }
-    private fun fadingMessage(mesg: String, seconds: Int = FADING_MESSAGE_DEFAULT_DELAY) {
-        enableInfoTextView(mesg)
-        object : CountDownTimer(seconds.toLong()*1000, 1000) {
-            override fun onFinish() { disableInfoTextView() }
-            override fun onTick(p0: Long) { }
-        }.start()
-    }
-
-    private fun countdown(seconds: Int) {
-        if (seconds > 0) {
-            enableInfoTextView("$seconds")
-
-            object : CountDownTimer(delayBeforeActionSeconds.toLong()*1000, 1000) {
-                override fun onTick(reamaining_ms: Long) {
-                    viewBinding.infoText.text = "${reamaining_ms / 1000}"
-                }
-
-                override fun onFinish() { disableInfoTextView() }
-            }.start()
-        }
     }
 
     private val scaleListener = object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
