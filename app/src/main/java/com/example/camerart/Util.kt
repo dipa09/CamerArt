@@ -156,26 +156,6 @@ fun evalAvgLuminosityAndRotation(image: ImageProxy): LumusInfo {
     return LumusInfo(pixels.average(), image.imageInfo.rotationDegrees)
 }
 
-fun videoQualityName(quality: Quality): String {
-    return when (quality) {
-        Quality.SD -> "SD"
-        Quality.HD -> "HD"
-        Quality.FHD -> "FHD"
-        Quality.UHD -> "UHD"
-        else -> ""
-    }
-}
-
-fun videoQualityFromName(name: String): Quality {
-    return when (name) {
-        "SD" -> Quality.SD
-        "HD" -> Quality.HD
-        "FHD" -> Quality.FHD
-        "UHD" -> Quality.UHD
-        else -> Quality.HIGHEST
-    }
-}
-
 fun stringToIntOr0(s: String): Int {
     return try {
         s.toInt()

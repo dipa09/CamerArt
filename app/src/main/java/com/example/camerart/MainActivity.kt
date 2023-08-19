@@ -11,7 +11,6 @@ import android.media.MediaActionSound
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.CountDownTimer
 import android.provider.MediaStore
 import android.util.Log
 import android.view.*
@@ -219,8 +218,9 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         //Log.d(TAG, "ON CREATE START")
 
+
         //dumpCameraFeatures(packageManager)
-        cameraFeatures = initCameraFeatures(packageManager)
+        cameraFeatures = CameraFeatures(getCameraProvider(), packageManager)
 
         /*
         // NOTE(davide): This must come before setContentView
@@ -230,6 +230,7 @@ class MainActivity : AppCompatActivity() {
             exitTransition = Slide()
         }
         */
+
 
         viewBinding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(viewBinding.root)
@@ -308,11 +309,12 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent(this, SettingActivity::class.java)
 
         val camInfo = currCamInfo
+        var wantFront = false
         if (camInfo != null) {
-            intent.putExtra("supportedQualities", querySupportedVideoQualities(camInfo))
+            wantFront = (camInfo.lensFacing == CameraSelector.LENS_FACING_FRONT)
             intent.putExtra("exposureState", exposureStateToBundle(camInfo.exposureState))
         }
-        intent.putExtra("features", cameraFeaturesToBundle(cameraFeatures))
+        intent.putExtra("features", cameraFeatures.toBundle(wantFront))
         intent.putExtra("isBeefy", isBeefy)
 
         this.startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this).toBundle())
@@ -935,9 +937,14 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun releaseCamera() {
+    private fun getCameraProvider(): ProcessCameraProvider {
         val providerFuture = ProcessCameraProvider.getInstance(this)
         val provider = providerFuture.get()
+        return provider
+    }
+
+    private fun releaseCamera() {
+        val provider = getCameraProvider()
         provider.unbindAll()
 
         currCamControl = null
@@ -948,6 +955,7 @@ class MainActivity : AppCompatActivity() {
         val controller = cameraController
         if (controller != null) {
             val viewFinder = viewBinding.viewFinder
+            Log.d("XX", "CLEAR")
             viewFinder.overlay.clear()
             viewFinder.controller = null
             controller.unbind()
@@ -959,6 +967,7 @@ class MainActivity : AppCompatActivity() {
     private fun startCamera() {
         //Log.d(TAG, "START CAMERA")
 
+        Log.d("XX", "currMode is $currMode")
         if (currMode == MODE_QRCODE_SCANNER) {
             releaseCamera()
             startQRScanner()

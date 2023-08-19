@@ -10,7 +10,6 @@ import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SeekBarPreference
-import androidx.preference.SwitchPreferenceCompat
 
 class SettingActivity : AppCompatActivity() {
     class SettingsFragment : PreferenceFragmentCompat() {
@@ -24,25 +23,17 @@ class SettingActivity : AppCompatActivity() {
             }
         }
 
-        private fun getCameraFeatures(args: Bundle): CameraFeatures {
-            val b = args.getBundle("features")
-            return if (b != null)
-                cameraFeaturesFromBundle(b)
-            else
-                CameraFeatures()
-        }
-
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             setPreferencesFromResource(R.xml.root_preferences, rootKey)
 
             val args = arguments
             if (args != null) {
-                val features = getCameraFeatures(args)
+                val features = CameraFeatures.fromBundle(args.getBundle("features"))
                 enablePreference(resources.getString(R.string.flash_key), features.hasFlash)
                 enablePreference(resources.getString(R.string.multi_camera_key), features.hasMulti)
 
                 setupCaptureModeAndJPEGQualityPreference()
-                setupVideoQualityPreference(args)
+                setupVideoQualityPreference(features)
                 setupImageFormatPreference()
                 setupExposurePreference(args)
                 setupVideoDurationPreference()
@@ -69,22 +60,23 @@ class SettingActivity : AppCompatActivity() {
         }
 
         // NOTE(davide): Display only available qualities
-        private fun setupVideoQualityPreference(args: Bundle) {
+        private fun setupVideoQualityPreference(features: CameraFeaturesFromBundle) {
             val pref: ListPreference? = findPreference(resources.getString(R.string.video_quality_key))
             if (pref != null) {
-                val qualities = args.getStringArray("supportedQualities")
-                if (qualities != null) {
-                    pref.entryValues = qualities
-                    pref.entries = qualities
+                val qualityNames = features.qualityNames
+                pref.entryValues = qualityNames
+                pref.entries = qualityNames
 
-                    supportedQualities = qualities
-                    supportedResolutions = initVideoResolutions(qualities)
-                }
+                //supportedQualities = qualities
+                //supportedResolutions = initVideoResolutions(qualities)
 
+                /*
                 pref.summaryProvider =
                     Preference.SummaryProvider<ListPreference> { _ ->
                         lookupQualityResolutionSummary(pref.value)
                     }
+
+                 */
             }
         }
 
@@ -154,6 +146,7 @@ class SettingActivity : AppCompatActivity() {
             }
         }
 
+        /*
         private fun initVideoResolutions(qualities: Array<String>): Array<String>  {
             val resolutions = Array<String>(qualities.size){""}
             for (i in qualities.indices)  {
@@ -173,6 +166,7 @@ class SettingActivity : AppCompatActivity() {
 
             return resolutions
         }
+        */
 
         private fun lookupQualityResolutionSummary(qualityName: String?): String  {
             var result = "Not selected"
