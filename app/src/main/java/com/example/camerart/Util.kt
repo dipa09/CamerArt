@@ -14,13 +14,8 @@ import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.ImageProxy
 import androidx.camera.extensions.ExtensionMode
 import androidx.camera.video.MediaStoreOutputOptions
-import androidx.camera.video.Quality
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.*
-import javax.net.ssl.HttpsURLConnection
 
 fun makeContentValues(displayName: String, mimeType: String): ContentValues {
     val values = ContentValues().apply {
@@ -160,26 +155,6 @@ fun evalAvgLuminosityAndRotation(image: ImageProxy): LumusInfo {
     return LumusInfo(pixels.average(), image.imageInfo.rotationDegrees)
 }
 
-fun videoQualityName(quality: Quality): String {
-    return when (quality) {
-        Quality.SD -> "SD"
-        Quality.HD -> "HD"
-        Quality.FHD -> "FHD"
-        Quality.UHD -> "UHD"
-        else -> ""
-    }
-}
-
-fun videoQualityFromName(name: String): Quality {
-    return when (name) {
-        "SD" -> Quality.SD
-        "HD" -> Quality.HD
-        "FHD" -> Quality.FHD
-        "UHD" -> Quality.UHD
-        else -> Quality.HIGHEST
-    }
-}
-
 fun stringToIntOr0(s: String): Int {
     return try {
         s.toInt()
@@ -188,8 +163,19 @@ fun stringToIntOr0(s: String): Int {
     }
 }
 
-data class VideoType(val uri : String, val thumbnail : Bitmap?){
-    fun getVideoThumbnail() : Bitmap? {return thumbnail}
+fun bitmapFormatFromMime(mime: String): Bitmap.CompressFormat {
+    return when (mime) {
+        MainActivity.MIME_TYPE_JPEG -> Bitmap.CompressFormat.JPEG
+        MainActivity.MIME_TYPE_PNG -> Bitmap.CompressFormat.PNG
+        MainActivity.MIME_TYPE_WEBP -> {
+            if (Build.VERSION.SDK_INT >= MainActivity.MIN_VERSION_FOR_WEBP) {
+                Bitmap.CompressFormat.WEBP_LOSSY
+            } else {
+                throw IllegalArgumentException("Invalid image format")
+            }
+        }
+        else -> Bitmap.CompressFormat.JPEG
+    }
 }
 
 fun kilobytes(x: Long): Long { return x*1024 }
@@ -197,4 +183,4 @@ fun megabytes(x: Long): Long { return x*1024*1024 }
 fun gigabytes(x: Long): Long { return x*1024*1024*1024 }
 
 // NOTE(davide): Indicates that a code path is unreachable, hence it must NOT be caught
-class UnreachableCodePath : Exception("unreachable code path")
+class UnreachableCodePath(message: String) : Exception(message)

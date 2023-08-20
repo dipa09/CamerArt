@@ -187,7 +187,7 @@ private fun getMatrixFor(filterType: Int): FloatArray {
                 0f, 0f, 0f, 1f, 0f
             )
 
-        else -> throw UnreachableCodePath()
+        else -> throw UnreachableCodePath("invalid filter")
     }
 }
 
@@ -198,14 +198,14 @@ private fun getKernelFor(filterType: Int): FilterKernel {
         FILTER_TYPE_SHARPEN_LIGHT -> sharpenLight()
         FILTER_TYPE_SHARPEN_HARD -> sharpenHard()
         FILTER_TYPE_EMBOSS -> emboss()
-        else -> throw UnreachableCodePath()
+        else -> throw UnreachableCodePath("invalid filter for kernel")
     }
 }
 
 fun filterBitmap(source: Bitmap, filterType: Int, beefyDevice: Boolean = false): Bitmap {
     var dest = source
 
-    if (source.config == Bitmap.Config.ARGB_8888) {
+    if (filterType != FILTER_TYPE_NONE && source.config == Bitmap.Config.ARGB_8888) {
         if (filterType <= FILTER_TYPE_FADED) {
             val filter = ColorMatrixColorFilter(ColorMatrix(getMatrixFor(filterType)))
             dest = Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
@@ -252,8 +252,6 @@ fun filterBitmap(source: Bitmap, filterType: Int, beefyDevice: Boolean = false):
                 paint.maskFilter = BlurMaskFilter(150f, BlurMaskFilter.Blur.INNER)
                 paint.isFilterBitmap = true
                 canvas.drawBitmap(source, 0f, 0f, paint)
-            } else {
-                throw UnreachableCodePath()
             }
         }
     }

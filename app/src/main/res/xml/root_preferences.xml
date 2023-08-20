@@ -78,11 +78,6 @@
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/video">
-        <SwitchPreferenceCompat
-            app:key="pref_use_video_temp"
-            app:title="Do a video"
-            app:defaultValue="false" />
-
         <ListPreference
             app:key="@string/video_quality_key"
             app:title="@string/quality"
@@ -141,13 +136,16 @@
         <SwitchPreferenceCompat
             app:key="@string/qrcode_key"
             app:title="@string/qrcode"
-            app:summary="@string/qrcode_summary"
             app:defaultValue="false" />
 
         <SwitchPreferenceCompat
             app:key="@string/action_sound_key"
             app:title="@string/action_sound"
-            app:summary="@string/action_sound_summary"
+            app:defaultValue="false" />
+
+        <SwitchPreferenceCompat
+            app:key="@string/brightness_key"
+            app:title="@string/brightness"
             app:defaultValue="false" />
 
     </PreferenceCategory>
