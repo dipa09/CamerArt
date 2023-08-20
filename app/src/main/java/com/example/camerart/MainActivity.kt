@@ -326,9 +326,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun toggleAudio() {
+        val rec = recording
         audioEnabled = !audioEnabled
         if (audioEnabled) viewBinding.muteButton.setBackgroundResource(R.drawable.baseline_mic_none_24)
         else viewBinding.muteButton.setBackgroundResource(R.drawable.baseline_mic_off_24)
+        if(rec != null){
+            rec.mute(!audioEnabled)
+        }
     }
 
     private fun toggleCamera() {
