@@ -65,8 +65,6 @@
 
     <string name="action_sound">Effetti Sonori</string>
 
-    <string name="brightness">Schermo Luminoso</string>
-
     <string name="photo_saved_success">Foto salvata correttament in</string>
     <string name="photo_error">Errore nello scattare la foto</string>
     <string name="video_saved_success">Video salvato correttamente in</string>

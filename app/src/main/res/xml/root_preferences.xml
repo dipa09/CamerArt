@@ -143,11 +143,6 @@
             app:title="@string/action_sound"
             app:defaultValue="false" />
 
-        <SwitchPreferenceCompat
-            app:key="@string/brightness_key"
-            app:title="@string/brightness"
-            app:defaultValue="false" />
-
     </PreferenceCategory>
 
 </PreferenceScreen>

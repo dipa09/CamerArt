@@ -120,13 +120,19 @@ class SettingActivity : AppCompatActivity() {
             val pref: EditTextPreference? = findPreference(resources.getString(R.string.video_duration_key))
             if (pref != null) {
                 pref.setOnPreferenceChangeListener { _, newValue ->
+                    var valid = false
+
                     val duration = newValue as String
-                    var valid = (duration.first() != '0')
-                    if (valid) {
-                        for (ch in duration.iterator()) {
-                            valid = ch.isDigit()
-                            if (!valid)
-                                break
+                    if (duration.isEmpty()) {
+                        valid = true
+                    } else {
+                        valid = (duration.first() != '0')
+                        if (valid) {
+                            for (ch in duration.iterator()) {
+                                valid = ch.isDigit()
+                                if (!valid)
+                                    break
+                            }
                         }
                     }
                     valid
@@ -176,7 +182,6 @@ class SettingActivity : AppCompatActivity() {
 
             return resolutions
         }
-        */
 
         private fun lookupQualityResolutionSummary(qualityName: String?): String  {
             var result = "Not selected"
@@ -196,7 +201,9 @@ class SettingActivity : AppCompatActivity() {
 
             return result
         }
+         */
     }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_setting)

@@ -1,7 +1,6 @@
 package com.example.camerart
 
 import android.os.Build
-import android.util.Log
 import java.io.BufferedReader
 import java.io.FileReader
 import java.io.InputStreamReader
@@ -14,8 +13,7 @@ import javax.net.ssl.HttpsURLConnection
 fun deviceHasBeenTested(): Boolean {
     var result = false
     try {
-        // TODO(davide): Remember to change this to the main branch
-        val source = "https://raw.githubusercontent.com/dipa09/CamerArt/camera/supported_devices.txt"
+        val source = "https://raw.githubusercontent.com/dipa09/CamerArt/main/supported_devices.txt"
         val url = URL(source)
         val conn: HttpsURLConnection = url.openConnection() as HttpsURLConnection
         val br = BufferedReader(InputStreamReader(conn.inputStream))
@@ -30,25 +28,21 @@ fun deviceHasBeenTested(): Boolean {
         //models.add("ONE E1003")
 
         result = models.binarySearch(Build.MODEL) >= 0
-    }
-    catch (_: Exception) { }
+    } catch (_: Exception) { }
 
     return result
 }
 
-fun peekToken(tok: String, startAt: Int): Pair<Int, Int>
-{
+fun peekToken(tok: String, startAt: Int): Pair<Int, Int> {
     var start = startAt
-    while (start < tok.length)
-    {
+    while (start < tok.length) {
         if (!tok[start].isWhitespace())
             break
         ++start
     }
 
     var end = start
-    while (end < tok.length)
-    {
+    while (end < tok.length) {
         if (tok[end].isWhitespace())
             break
         ++end

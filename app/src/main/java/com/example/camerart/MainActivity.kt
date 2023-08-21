@@ -100,7 +100,6 @@ class MainActivity : AppCompatActivity() {
     //
 
     private var isBeefy: Boolean = false
-    private var initialBrightness: Float = 0.0f
 
     private var imageCapture: ImageCapture? = null
     private var videoCapture: VideoCapture<Recorder>? = null
@@ -202,8 +201,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initialize() {
-        initialBrightness = window.attributes.screenBrightness
-
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
         if (prefs.getBoolean(ON_FIRST_RUN, true)) {
             isBeefy = isBeefyDevice()
@@ -542,16 +539,6 @@ class MainActivity : AppCompatActivity() {
             videoDuration = stringToIntOr0(pref)
     }
 
-    private fun updateBrightness(prefs: SharedPreferences) {
-        val gotBrightness = getBool(R.string.brightness_key, prefs)
-        val layout = window.attributes
-        layout.screenBrightness = if (gotBrightness)
-            1f
-        else
-            initialBrightness
-        window.attributes = layout
-    }
-
     private fun getStringPref(stringID: Int, prefs: SharedPreferences): String? {
         return prefs.getString(resources.getString(stringID), "")
     }
@@ -627,7 +614,6 @@ class MainActivity : AppCompatActivity() {
             soundManager.enable()
         else
             soundManager.disable()
-        updateBrightness(prefs)
 
         if (getBool(R.string.qrcode_key, prefs)) {
             if (currMode != MODE_QRCODE_SCANNER) {
@@ -676,7 +662,6 @@ class MainActivity : AppCompatActivity() {
         Log.e(TAG, "Photo capture failed: ${ex.message}")
     }
 
-    // TODO(davide): Add more metadata. Location, producer, ...
     private fun takePhoto() {
         val imageCapture = imageCapture ?: return
 
@@ -724,7 +709,7 @@ class MainActivity : AppCompatActivity() {
                             uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues) ?: throw IOException("No media store")
 
                             contentResolver.openOutputStream(uri)?.use {
-                                Log.d(TAG, "Start compressing")
+                                //Log.d(TAG, "Start compressing")
                                 destBitmap.compress(bitmapFormatFromMime(requestedFormat), jpegQuality, it)
                             } ?: throw IOException("Failed to open output stream")
 
@@ -733,8 +718,9 @@ class MainActivity : AppCompatActivity() {
                             uri?.let { orphanUri ->
                                 contentResolver.delete(orphanUri, null, null)
                             }
-                            Log.d(TAG, "Failed to save image $ex")
-                            Toast.makeText(baseContext, "BAD", Toast.LENGTH_SHORT).show()
+                            //Log.d(TAG, "Failed to save image $ex")
+
+                            showToast(R.string.photo_error)
                         }
 
                         super.onCaptureSuccess(imageProxy)
@@ -1189,17 +1175,17 @@ class MainActivity : AppCompatActivity() {
             if (abs(diffX) >= abs(diffY)) {
                 if (abs(diffX) > SWIPE_THRESHOLD && abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
                     if (diffX < 0) {
-                        Log.d("Gesture", "Left swipe")
+                        //Log.d("Gesture", "Left swipe")
 
                         launchGallery()
                     } else {
-                        Log.d("Gesture", "Right swipe")
+                        //Log.d("Gesture", "Right swipe")
 
                         launchSetting()
                     }
                 }
             } else {
-                Log.d("Gesture", "Vertical swipe")
+                //Log.d("Gesture", "Vertical swipe")
                 // TODO(davide): Increase/decrease exposure index?
             }
 
