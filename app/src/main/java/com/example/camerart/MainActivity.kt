@@ -654,7 +654,7 @@ class MainActivity : AppCompatActivity() {
         val msg = resources.getString(R.string.photo_saved_success) + " $uri"
         showToast(msg)
 
-        Log.d(TAG, msg)
+        //Log.d(TAG, msg)
     }
 
     private fun showPhotoError(ex: Exception) {
@@ -816,7 +816,7 @@ class MainActivity : AppCompatActivity() {
                 if (!event.hasError()) {
                     val msg = R.string.video_saved_success.toString() + "${event.outputResults.outputUri}"
                     showToast(msg)
-                    Log.d(TAG, msg)
+                    //Log.d(TAG, msg)
                 } else {
                     recording?.close()
                     recording = null
